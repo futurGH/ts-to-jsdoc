@@ -1,0 +1,24 @@
+{
+  "name": "ts-to-jsdoc",
+  "version": "1.0.0",
+  "description": "Transpile TypeScript code to fully compatible JavaScript + JSDoc comments.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "doc",
+    "docs",
+    "documentation",
+    "javascript",
+    "jsdoc",
+    "transpile",
+    "ts",
+    "typescript"
+  ],
+  "author": "futurGH",
+  "license": "MIT",
+  "dependencies": {
+    "ts-morph": "^11.0.0"
+  }
+}
