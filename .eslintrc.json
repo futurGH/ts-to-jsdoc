@@ -1,28 +1,15 @@
 {
-  "env": {
-    "commonjs": true,
-    "es2021": true,
-    "node": true
-  },
-  "extends": [
-    "airbnb-base"
-  ],
-  "parserOptions": {
-    "ecmaVersion": 12
-  },
-  "rules": {
-    "import/no-dynamic-require": "off",
-    "global-require": "off",
-    "no-unused-expressions": "off",
-    "no-param-reassign": "off",
-    "max-len": "off",
-    "no-restricted-syntax": "off",
-    "no-continue": "off",
-    "no-tabs": "off",
-    "no-unused-vars": "warn",
-    "quotes": ["error", "double", {
-      "allowTemplateLiterals": true
-    }],
-    "indent": ["error", "tab"]
-  }
+    "env": {
+        "commonjs": true,
+        "es2021": true,
+        "node": true
+    },
+    "extends": ["google"],
+    "parserOptions": { "ecmaVersion": 12 },
+    "rules": {
+        "max-len": "warn",
+        "require-jsdoc": "off",
+        "valid-jsdoc": "off",
+        "quotes": ["error", "double"]
+    }
 }
