@@ -6,6 +6,22 @@ This program's primary purpose is to transpile TypeScript so that it can be used
 
 ## Usage
 
+### Command Line
+
+```shell
+$ ts-to-jsdoc
+
+Usage:
+  ts-to-jsdoc [options] <path>...
+
+Options:
+  -h --help          Shows this.
+  -o --out --output  Directory to output transpiled JavaScript. [default: source path]
+  -i --ignore        File or directory paths to ignore when transpiling.
+```
+
+### Node.js
+
 ```javascript
 const transpile = require("ts-to-jsdoc");
 // or
