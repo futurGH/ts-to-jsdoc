@@ -1,9 +1,10 @@
-#! /usr/bin/env node
-const transpile = require("../index.js");
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
-const args = require("arg")({
+import { default as arg } from "arg";
+import transpile from "../index";
+
+const { ["--out"]: out, ["--ignore"]: ignore, ["--help"]: help, _ } = arg({
   "--out": String,
   "-o": "--out",
   "--output": "--out",
@@ -14,11 +15,10 @@ const args = require("arg")({
   "--help": Boolean,
   "-h": "--help",
 });
-args.out = args["--out"];
-args.ignore = args["--ignore"];
-args.help = args["--help"];
 
-const help = `
+const args = { out, ignore, help, _ }
+
+const helpMessage = `
 Usage:
   ts-to-jsdoc [options] <path>...
 
@@ -28,7 +28,7 @@ Options:
   -i --ignore        File or directory paths to ignore when transpiling.`;
 
 if (args.help || Object.keys(args).every((arg) => !args[arg]?.length)) {
-  console.log(help);
+  console.log(helpMessage);
   process.exit(0);
 }
 
@@ -52,7 +52,7 @@ const paths = replaceDirectoriesWithFiles(
     .filter((filepath) => path.extname(filepath) === ".ts" && !filepath.endsWith(".d.ts"))
     .filter((filepath) =>
       !args.ignore.some(
-          (ignoredPath) => filepath === ignoredPath || require("path-is-inside")(filepath, ignoredPath),
+          (ignoredPath) => filepath === ignoredPath || pathIsInside(filepath, ignoredPath),
       ),
     );
 
@@ -125,3 +125,37 @@ function replaceDirectoriesWithFiles(paths) {
   }
   return pathArray;
 }
+
+/**
+ * @license WTFPL
+ * Copyright © 2013–2016 Domenic Denicola <d@domenic.me>
+ */
+function pathIsInside(thePath, potentialParent) {
+  // For inside-directory checking, we want to allow trailing slashes, so normalize.
+  thePath = stripTrailingSep(thePath);
+  potentialParent = stripTrailingSep(potentialParent);
+
+  // Node treats only Windows as case-insensitive in its path module; we follow those conventions.
+  if (process.platform === "win32") {
+    thePath = thePath.toLowerCase();
+    potentialParent = potentialParent.toLowerCase();
+  }
+
+  return thePath.lastIndexOf(potentialParent, 0) === 0 &&
+      (
+          thePath[potentialParent.length] === path.sep ||
+          thePath[potentialParent.length] === undefined
+      );
+}
+
+/**
+ * @license WTFPL
+ * Copyright © 2013–2016 Domenic Denicola <d@domenic.me>
+ */
+function stripTrailingSep(thePath) {
+  if (thePath[thePath.length - 1] === path.sep) {
+    return thePath.slice(0, -1);
+  }
+  return thePath;
+}
+

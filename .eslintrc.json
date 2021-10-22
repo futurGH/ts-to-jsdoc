@@ -10,6 +10,7 @@
         "max-len": "warn",
         "require-jsdoc": "off",
         "valid-jsdoc": "off",
-        "quotes": ["error", "double"]
+        "quotes": ["error", "double"],
+        "indent": ["error", "tab"]
     }
 }

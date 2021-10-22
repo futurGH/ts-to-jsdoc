@@ -4,9 +4,7 @@
   "description": "Transpile TypeScript code to fully compatible JavaScript + JSDoc comments.",
   "main": "index.js",
   "bin": "./bin/ts-to-jsdoc",
-  "engines": {
-    "node": ">=14.0.0"
-  },
+  "repository": "github:futurGH/ts-to-jsdoc",
   "keywords": [
     "doc",
     "docs",
@@ -21,11 +19,15 @@
   "license": "MIT",
   "dependencies": {
     "arg": "^5.0.0",
-    "path-is-inside": "^1.0.2",
     "ts-morph": "^11.0.0"
   },
   "devDependencies": {
+    "@types/node": "^16.11.4",
     "eslint": "^7.30.0",
     "eslint-config-google": "^0.14.0"
-  }
+  },
+  "files": [
+    "index.js",
+    "bin/ts-to-jsdoc"
+  ]
 }
