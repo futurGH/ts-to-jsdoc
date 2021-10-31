@@ -19,30 +19,27 @@ import type {
 	PropertySignature,
 	SourceFile,
 	TypeAliasDeclaration,
-	TypedNode
-} from "ts-morph"
+	TypedNode,
+} from "ts-morph";
 
 declare module "ts-morph" {
+	// eslint-disable-next-line no-shadow
 	namespace Node {
 		let isObjectProperty: (node: Node) => boolean;
 	}
 }
-Node.isObjectProperty = (node): node is ObjectProperty =>
+Node.isObjectProperty = (node): node is ObjectProperty => (
 	Node.isPropertyDeclaration(node)
 	|| Node.isPropertyAssignment(node)
-	|| Node.isPropertySignature(node);
+	|| Node.isPropertySignature(node)
+);
 
-type ObjectProperty = JSDocableNode & TypedNode & (PropertyDeclaration | PropertyAssignment | PropertySignature);
+type ObjectProperty = JSDocableNode & TypedNode & (
+	| PropertyDeclaration
+	| PropertyAssignment
+	| PropertySignature
+);
 type ClassMemberNode = JSDocableNode & ModifierableNode & ObjectProperty & MethodDeclaration;
-
-// extension of ^^^
-/**
- * @typedef {JSDocableNode & PropertyDeclaration | PropertyAssignment | PropertySignature} ObjectProperty
- */
-
-/**
- * @typedef {JSDocableNode & ModifierableNode & ObjectProperty & MethodDeclaration} ClassMemberNode
- */
 
 /** Get children for object node */
 function getChildProperties(node: Node): ObjectProperty[] {
@@ -50,7 +47,7 @@ function getChildProperties(node: Node): ObjectProperty[] {
 	const valueDeclarations = properties.map((child) => child.getValueDeclaration())
 		// Hacky way to check if the child is actually a defined child in the interface
 		// or if it's, e.g. a built-in method of the type (such as array.length)
-		?.filter((child) => node.getFullText().includes(child?.getFullText()))
+		?.filter((child) => node.getFullText().includes(child?.getFullText()));
 	return (valueDeclarations ?? []) as ObjectProperty[];
 }
 
@@ -65,7 +62,6 @@ function sanitizeType(str: string): string | null {
 	// Convert `typeof MyClass` syntax to `Class<MyClass>`
 	const extractedClassFromTypeof = /{*typeof\s+([^(?:}|\s);]*)/gm.exec(str)?.[1];
 	if (extractedClassFromTypeof) str = `Class<${extractedClassFromTypeof}>`;
-
 	return str;
 }
 
@@ -103,16 +99,16 @@ function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration):
 	const functionReturnType = sanitizeType(functionNode.getReturnType()?.getText());
 	const jsDoc = getJsDocOrCreate(functionNode);
 	const returnsTag = (jsDoc?.getTags() || [])
-		.find((tag) =>
-			["returns", "return"].includes(tag.getTagName())
-		);
+		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
 	// Replace tag with one that contains type info if tag exists
 	if (returnsTag) {
 		const tagName = returnsTag.getTagName();
 		const comment = returnsTag.getComment();
 		// https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler#return-type-description
 		if (functionReturnType !== "void") {
-			returnsTag.replaceWithText(`@${tagName} {${functionReturnType}}${comment ? ` ${comment}` : ""}`);
+			returnsTag.replaceWithText(
+				`@${tagName} {${functionReturnType}}${comment ? ` ${comment}` : ""}`,
+			);
 		}
 	} else {
 		// Otherwise, create a new one
@@ -132,7 +128,7 @@ function generateFunctionDocumentation(functionNode: FunctionLikeDeclaration): v
 /** Generate modifier documentation for class member */
 function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
 	const modifiers = classMemberNode.getModifiers() || [];
-	for (let modifier of modifiers) {
+	for (const modifier of modifiers) {
 		const text = modifier?.getText();
 		if (["public", "private", "protected", "readonly", "static"].includes(text)) {
 			const jsDoc = getJsDocOrCreate(classMemberNode);
@@ -147,7 +143,9 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
  */
 function generateInitializerDocumentation(classPropertyNode: ObjectProperty): void {
 	const jsDoc = getJsDocOrCreate(classPropertyNode);
-	if (!classPropertyNode.getStructure()?.initializer) classPropertyNode.setInitializer("undefined");
+	if (!classPropertyNode.getStructure()?.initializer) {
+		classPropertyNode.setInitializer("undefined");
+	}
 	const initializer = classPropertyNode.getStructure()?.initializer;
 	if (initializer !== "undefined") {
 		jsDoc.addTag({ tagName: "default", text: initializer });
@@ -178,10 +176,14 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
 
 /**
  * Generate @typedefs from type aliases
- * @returns A JSDoc comment containing the typedef
+ * @return A JSDoc comment containing the typedef
  */
-function generateTypedefDocumentation(typeNode: TypeAliasDeclaration, sourceFile: SourceFile): string {
-	// Create dummy node to assign typedef documentation to (will be deleted afterwards)
+function generateTypedefDocumentation(
+	typeNode: TypeAliasDeclaration,
+	sourceFile: SourceFile,
+): string {
+	// Create dummy node to assign typedef documentation to
+	// (will be deleted afterwards)
 	const name = typeNode.getName();
 	let { type } = typeNode.getStructure();
 	if (typeof type !== "string") return;
@@ -206,14 +208,15 @@ function generateTypedefDocumentation(typeNode: TypeAliasDeclaration, sourceFile
  * Generate documentation for object properties; runs recursively for nested objects
  * @param node
  * @param jsDoc
- * @param [name=""] The name to assign child docs to; "obj" will generate docs for "obj.val1", "obj.val2", etc
+ * @param [name=""] The name to assign child docs to;
+ *		"obj" will generate docs for "obj.val1", "obj.val2", etc
  * @param [topLevelCall=true] recursive functions are funky
  */
 function generateObjectPropertyDocumentation(
 	node: ObjectProperty,
 	jsDoc: JSDoc,
-	name: string = "",
-	topLevelCall: boolean = true
+	name = "",
+	topLevelCall = true,
 ): void {
 	name = name || node.getName();
 	if (!topLevelCall) name = `${name}.${node.getName()}`;
@@ -223,7 +226,11 @@ function generateObjectPropertyDocumentation(
 		?.replace(/\s/g, "");
 	propType = sanitizeType(propType);
 
-	const isOptional = node.hasQuestionToken() || node.getJsDocs()?.[0]?.getTags()?.some((tag) => tag.getTagName() === "optional");
+	const isOptional = node.hasQuestionToken()
+		|| node.getJsDocs()
+			?.[0]
+			?.getTags()
+			?.some((tag) => tag.getTagName() === "optional");
 	// Copy over existing description if there is one
 	const existingPropDocs = node.getJsDocs()?.[0]?.getDescription() || "";
 	const children = getChildProperties(node);
@@ -232,7 +239,7 @@ function generateObjectPropertyDocumentation(
 
 	jsDoc.addTag({
 		tagName: "property",
-		text: `{${propType}} ${isOptional ? `[${name}]` : name} ${existingPropDocs}`
+		text: `{${propType}} ${isOptional ? `[${name}]` : name} ${existingPropDocs}`,
 	});
 
 	if (children.length) {
@@ -256,11 +263,17 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
  * Transpile.
  * @param src Source code to transpile
  * @param filename Filename to use internally when transpiling (can be path or just a name)
- * @param [compilerOptions={}] Options for the compiler. See https://www.typescriptlang.org/tsconfig#compilerOptions
+ * @param [compilerOptions={}] Options for the compiler.
+ * 		See https://www.typescriptlang.org/tsconfig#compilerOptions
  * @param [debug=false] Whether to log errors
  * @return Transpiled code (or the original source code if something went wrong)
  */
-function transpile(src: string, filename: string, compilerOptions: object = {}, debug: boolean = false): string {
+function transpile(
+	src: string,
+	filename: string,
+	compilerOptions: object = {},
+	debug = false,
+): string {
 	try {
 		const project = new Project({
 			compilerOptions: {
@@ -274,7 +287,10 @@ function transpile(src: string, filename: string, compilerOptions: object = {}, 
 		// typedefs/interfaces, which get transpiled to nothing but comments
 		const code = `const __fakeValue = null;\n\n${src}`;
 		// ts-morph throws a fit if the path already exists
-		const sourceFile = project.createSourceFile(`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`, code);
+		const sourceFile = project.createSourceFile(
+			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
+			code,
+		);
 
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 

@@ -1,16 +1,29 @@
 {
-    "env": {
-        "commonjs": true,
-        "es2021": true,
-        "node": true
+	"env": {
+		"es2021": true,
+		"node": true
     },
-    "extends": ["google"],
-    "parserOptions": { "ecmaVersion": 12 },
-    "rules": {
-        "max-len": "warn",
-        "require-jsdoc": "off",
-        "valid-jsdoc": "off",
-        "quotes": ["error", "double"],
-        "indent": ["error", "tab"]
-    }
+	"extends": ["airbnb-base", "plugin:@typescript-eslint/recommended"],
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 12,
+		"sourceType": "module"
+	},
+	"plugins": ["@typescript-eslint"],
+	"rules": {
+		"@typescript-eslint/ban-ts-comment": "off",
+		"@typescript-eslint/no-namespace": "off",
+		"consistent-return": "off",
+		"indent": ["error", "tab"],
+		"linebreak-style": ["error", "unix"],
+		"max-len": ["warn", 100],
+		"no-continue": "off",
+		"no-param-reassign": "off",
+		"no-restricted-syntax": "off",
+		"no-tabs": "off",
+		"no-unused-expressions": "off",
+		"no-use-before-define": "off",
+		"object-curly-spacing": ["error", "always"],
+		"quotes": ["error", "double"]
+	}
 }
