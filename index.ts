@@ -277,6 +277,8 @@ function transpile(
 	compilerOptions: object = {},
 	debug = false,
 ): string {
+	if (!filename) filename = 'input.ts'; // empty filename -> input is parsed as javascript
+
 	try {
 		const project = new Project({
 			compilerOptions: {
