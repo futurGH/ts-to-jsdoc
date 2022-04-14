@@ -65,7 +65,10 @@ function sanitizeType(str: string): string | null {
 	return str;
 }
 
-/** Generate @param documentation from function parameters */
+/**
+ * Generate @param documentation from function parameters
+ * the new jsDoc is stored in functionNode
+*/
 function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): void {
 	const params = functionNode.getParameters();
 	for (const param of params) {
@@ -97,7 +100,10 @@ function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): 
 	}
 }
 
-/** Generate @returns documentation from function return type */
+/**
+ * Generate @returns documentation from function return type
+ * the new jsDoc is stored in functionNode
+*/
 function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration): void {
 	const functionReturnType = sanitizeType(functionNode.getReturnType()?.getText());
 	const jsDoc = getJsDocOrCreate(functionNode);
@@ -122,7 +128,10 @@ function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration):
 	}
 }
 
-/** Generate documentation for function */
+/**
+ * Generate documentation for function
+ * the new jsDoc is stored in functionNode
+*/
 function generateFunctionDocumentation(functionNode: FunctionLikeDeclaration): void {
 	generateParameterDocumentation(functionNode);
 	generateReturnTypeDocumentation(functionNode);
