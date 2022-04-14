@@ -5,7 +5,8 @@ logs
 npm-debug.log*
 
 # Transpilation results
-*.js
+index.js
+bin/*.js
 
 # Dependency directories
 node_modules/
