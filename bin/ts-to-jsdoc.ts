@@ -4,7 +4,7 @@ import path from "path";
 import transpile from "../index";
 
 const {
-	"--out": out, "--ignore": ignore, "--help": help, _,
+	"--out": out, "--ignore": ignore, "--help": help, _, "--force": force,
 } = arguments({
 	"--out": String,
 	"-o": "--out",
@@ -15,11 +15,16 @@ const {
 
 	"--help": Boolean,
 	"-h": "--help",
+
+	"--force": Boolean,
+	"-f": "--force",
 });
 
 const args = {
-	out, ignore, help, _,
+	out, ignore, help, _, force,
 };
+
+//console.dir({ args }); // debug
 
 const helpMessage = `
 Usage:
@@ -28,6 +33,7 @@ Usage:
 Options:
   -h --help          Shows this.
   -o --out --output  Directory to output transpiled JavaScript. [default: source path]
+  -f --force         Overwrite existing output files.
   -i --ignore        File or directory paths to ignore when transpiling.`;
 
 if (args.help || Object.keys(args).every((arg) => !args[arg]?.length)) {
@@ -37,13 +43,14 @@ if (args.help || Object.keys(args).every((arg) => !args[arg]?.length)) {
 
 if (args.out) {
 	args.out = makePathAbsolute(args.out);
-	if (!fs.existsSync(args.out)) {
-		console.error(error(`Output directory ${args.out} does not exist.`));
-		process.exit(1);
+	if (fs.existsSync(args.out)) {
+		if (!args.force) {
+			console.error(error(`Output directory exists: ${args.out}`));
+			process.exit(1);
+		}
 	}
-	if (!fs.lstatSync(args.out).isDirectory()) {
-		console.error(error(`Output directory ${args.out} is not a directory.`));
-		process.exit(1);
+	else {
+		fs.mkdirSync(args.out);
 	}
 }
 
