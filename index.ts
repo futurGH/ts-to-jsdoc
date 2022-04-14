@@ -273,11 +273,13 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
  */
 function transpile(
 	src: string,
-	filename: string,
-	compilerOptions: object = {},
-	debug = false,
+	filename?: string,
+	compilerOptions?: object,
+	debug?,
 ): string {
 	if (!filename) filename = 'input.ts'; // empty filename -> input is parsed as javascript
+	if (!compilerOptions) compilerOptions = {};
+	if (!debug) debug = false;
 
 	try {
 		const project = new Project({
