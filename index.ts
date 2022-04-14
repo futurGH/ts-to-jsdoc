@@ -78,17 +78,20 @@ function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): 
 			// @ts-ignore
 			.find((tag) => tag.compilerNode.name?.getText() === param.getName());
 
-		const paramName = param.compilerNode.name?.getText();
+		const paramNameRaw = param.compilerNode.name?.getText();
+		// skip paramName if its too complex
+		// example typescript: function f({a, b}: {a: string, b: number})
+		const paramName = paramNameRaw.match(/[{},]/) ? '' : ` ${paramNameRaw}`;
 		if (paramTag) {
 			// Replace tag with one that contains typing info
 			const comment = paramTag.getComment();
 			const tagName = paramTag.getTagName();
 
-			paramTag.replaceWithText(`@${tagName} {${parameterType}} ${paramName}  ${comment}`);
+			paramTag.replaceWithText(`@${tagName} {${parameterType}}${paramName}  ${comment}`);
 		} else {
 			jsDoc.addTag({
 				tagName: "param",
-				text: `{${parameterType}} ${paramName}`,
+				text: `{${parameterType}}${paramName}`,
 			});
 		}
 	}
