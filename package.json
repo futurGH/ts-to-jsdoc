@@ -5,6 +5,9 @@
   "main": "index.js",
   "bin": "./bin/ts-to-jsdoc",
   "repository": "github:futurGH/ts-to-jsdoc",
+  "scripts": {
+    "build": "tsc --build"
+  },
   "keywords": [
     "doc",
     "docs",
