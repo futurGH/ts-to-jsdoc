@@ -1,4 +1,3 @@
-const __fakeValue = null;
 /**
  * Does stuff.
  * @param {string} param  It's a parameter.

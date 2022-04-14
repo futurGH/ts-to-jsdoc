@@ -281,6 +281,10 @@ function transpile(
 	if (!compilerOptions) compilerOptions = {};
 	if (!debug) debug = false;
 
+	// Useless variable to prevent comments from getting removed when code contains just
+	// typedefs/interfaces, which get transpiled to nothing but comments
+	const protectCommentsHeader = `const __tsToJsdoc_protectCommentsHeader = 1;\n`;
+
 	try {
 		const project = new Project({
 			compilerOptions: {
@@ -290,9 +294,7 @@ function transpile(
 			},
 		});
 
-		// Useless variable to prevent comments from getting removed when code contains just
-		// typedefs/interfaces, which get transpiled to nothing but comments
-		const code = `const __fakeValue = null;\n\n${src}`;
+		const code = protectCommentsHeader + src;
 		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
 			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
@@ -309,15 +311,26 @@ function transpile(
 
 		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
 
-		const result = project.emitToMemory()?.getFiles()?.[0]?.text;
+		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
 		if (result) {
+			if (!result.startsWith(protectCommentsHeader)) {
+				throw Error(
+					`internal error: protectCommentsHeader is missing in output\n\n` +
+					`protectCommentsHeader: ${JSON.stringify(protectCommentsHeader)}\n` +
+					`result: ${JSON.stringify(result.slice(protectCommentsHeader.length + 100) + " ...")}`
+				)
+			}
+			result = result.slice(protectCommentsHeader.length);
 			return `${result}\n\n${typedefs}\n\n${interfaces}`;
 		}
 	} catch (e) {
 		debug && console.error(e);
+		// TODO throw error
 		return src;
 	}
+	// TODO throw error
 	return src;
+
 }
 
 module.exports = transpile;
