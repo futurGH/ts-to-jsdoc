@@ -65,7 +65,9 @@ function sanitizeType(str: string): string | null {
 	return str;
 }
 
-/** Generate @param documentation from function parameters */
+/**
+ * Generate @param documentation from function parameters, storing it in functionNode
+ */
 function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): void {
 	const params = functionNode.getParameters();
 	for (const param of params) {
@@ -78,23 +80,28 @@ function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): 
 			// @ts-ignore
 			.find((tag) => tag.compilerNode.name?.getText() === param.getName());
 
-		const paramName = param.compilerNode.name?.getText();
+		const paramNameRaw = param.compilerNode.name?.getText();
+		// Skip parameter names if they are present in the type as an object literal
+		// e.g. destructuring; { a }: { a: string }
+		const paramName = paramNameRaw.match(/[{},]/) ? "" : ` ${paramNameRaw}`;
 		if (paramTag) {
-			// Replace tag with one that contains typing info
+			// Replace tag with one that contains type info
 			const comment = paramTag.getComment();
 			const tagName = paramTag.getTagName();
 
-			paramTag.replaceWithText(`@${tagName} {${parameterType}} ${paramName}  ${comment}`);
+			paramTag.replaceWithText(`@${tagName} {${parameterType}}${paramName}  ${comment}`);
 		} else {
 			jsDoc.addTag({
 				tagName: "param",
-				text: `{${parameterType}} ${paramName}`,
+				text: `{${parameterType}}${paramName}`,
 			});
 		}
 	}
 }
 
-/** Generate @returns documentation from function return type */
+/**
+ * Generate @returns documentation from function return type, storing it in functionNode
+ */
 function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration): void {
 	const functionReturnType = sanitizeType(functionNode.getReturnType()?.getText());
 	const jsDoc = getJsDocOrCreate(functionNode);
@@ -119,7 +126,9 @@ function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration):
 	}
 }
 
-/** Generate documentation for function */
+/**
+ * Generate documentation for a function, storing it in functionNode
+ */
 function generateFunctionDocumentation(functionNode: FunctionLikeDeclaration): void {
 	generateParameterDocumentation(functionNode);
 	generateReturnTypeDocumentation(functionNode);
@@ -161,14 +170,14 @@ function generateClassBaseDocumentation(classNode: ClassDeclaration) {
 	}
 }
 
-/** Generate documentation for class members in general; whether property or method */
+/** Generate documentation for class members in general; either property or method */
 function generateClassMemberDocumentation(classMemberNode: ClassMemberNode): void {
 	generateModifierDocumentation(classMemberNode);
 	Node.isObjectProperty(classMemberNode) && generateInitializerDocumentation(classMemberNode);
 	Node.isMethodDeclaration(classMemberNode) && generateFunctionDocumentation(classMemberNode);
 }
 
-/** Generate documentation for a class -- itself and its members */
+/** Generate documentation for a class — itself and its members */
 function generateClassDocumentation(classNode: ClassDeclaration): void {
 	generateClassBaseDocumentation(classNode);
 	classNode.getMembers().forEach(generateClassMemberDocumentation);
@@ -262,7 +271,7 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 /**
  * Transpile.
  * @param src Source code to transpile
- * @param filename Filename to use internally when transpiling (can be path or just a name)
+ * @param [filename=input.ts] Filename to use internally when transpiling (can be a path or a name)
  * @param [compilerOptions={}] Options for the compiler.
  * 		See https://www.typescriptlang.org/tsconfig#compilerOptions
  * @param [debug=false] Whether to log errors
@@ -270,10 +279,14 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
  */
 function transpile(
 	src: string,
-	filename: string,
+	filename = "input.ts",
 	compilerOptions: object = {},
 	debug = false,
 ): string {
+	// Useless variable to prevent comments from getting removed when code contains just
+	// typedefs/interfaces, which get transpiled to nothing but comments
+	const protectCommentsHeader = "const __tsToJsdoc_protectCommentsHeader = 1;\n";
+
 	try {
 		const project = new Project({
 			compilerOptions: {
@@ -283,9 +296,7 @@ function transpile(
 			},
 		});
 
-		// Useless variable to prevent comments from getting removed when code contains just
-		// typedefs/interfaces, which get transpiled to nothing but comments
-		const code = `const __fakeValue = null;\n\n${src}`;
+		const code = protectCommentsHeader + src;
 		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
 			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
@@ -302,8 +313,18 @@ function transpile(
 
 		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
 
-		const result = project.emitToMemory()?.getFiles()?.[0]?.text;
+		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
 		if (result) {
+			if (!result.startsWith(protectCommentsHeader)) {
+				throw new Error(
+					"Internal error: generated header is missing in output\n\n"
+					+ `protectCommentsHeader: ${JSON.stringify(protectCommentsHeader)}\n`
+					+ `Output: ${
+						JSON.stringify(`${result.slice(protectCommentsHeader.length + 100)} ...`)
+					}`,
+				);
+			}
+			result = result.slice(protectCommentsHeader.length);
 			return `${result}\n\n${typedefs}\n\n${interfaces}`;
 		}
 	} catch (e) {
