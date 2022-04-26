@@ -4,7 +4,7 @@ import path from "path";
 import transpile from "../index";
 
 const {
-	"--out": out, "--ignore": ignore, "--help": help, _, "--force": force,
+	"--out": out, "--ignore": ignore, "--force": force, "--help": help, _,
 } = arguments({
 	"--out": String,
 	"-o": "--out",
@@ -13,18 +13,16 @@ const {
 	"--ignore": [String],
 	"-i": "--ignore",
 
-	"--help": Boolean,
-	"-h": "--help",
-
 	"--force": Boolean,
 	"-f": "--force",
+
+	"--help": Boolean,
+	"-h": "--help",
 });
 
 const args = {
-	out, ignore, help, _, force,
+	out, ignore, force, help, _,
 };
-
-//console.dir({ args }); // debug
 
 const helpMessage = `
 Usage:
@@ -33,8 +31,9 @@ Usage:
 Options:
   -h --help          Shows this.
   -o --out --output  Directory to output transpiled JavaScript. [default: source path]
+  -i --ignore        File or directory paths to ignore when transpiling.
   -f --force         Overwrite existing output files.
-  -i --ignore        File or directory paths to ignore when transpiling.`;
+`;
 
 if (args.help || Object.keys(args).every((arg) => !args[arg]?.length)) {
 	console.log(helpMessage);
@@ -48,8 +47,7 @@ if (args.out) {
 			console.error(error(`Output directory exists: ${args.out}`));
 			process.exit(1);
 		}
-	}
-	else {
+	} else {
 		fs.mkdirSync(args.out);
 	}
 }

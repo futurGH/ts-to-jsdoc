@@ -6,8 +6,7 @@
   "bin": "./bin/ts-to-jsdoc",
   "repository": "github:futurGH/ts-to-jsdoc",
   "scripts": {
-    "build": "tsc --build",
-    "test": "uvu -r esm test/ '\\.test\\.js$'"
+    "build": "tsc --build"
   },
   "keywords": [
     "doc",
@@ -31,12 +30,11 @@
     "@typescript-eslint/parser": "^5.2.0",
     "eslint": "^8.1.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.25.2",
-    "esm": "^3.2.25",
-    "uvu": "^0.5.3"
+    "eslint-plugin-import": "^2.25.2"
   },
   "files": [
     "index.js",
-    "bin/ts-to-jsdoc"
+    "bin/ts-to-jsdoc",
+    "bin/ts-to-jsdoc.js"
   ]
 }

@@ -18,6 +18,7 @@ Options:
   -h --help          Shows this.
   -o --out --output  Directory to output transpiled JavaScript. [default: source path]
   -i --ignore        File or directory paths to ignore when transpiling.
+  -f --force         Overwrite existing output files.
 ```
 
 ### Node.js
