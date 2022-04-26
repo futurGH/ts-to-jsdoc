@@ -81,11 +81,11 @@ function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): 
 			.find((tag) => tag.compilerNode.name?.getText() === param.getName());
 
 		const paramNameRaw = param.compilerNode.name?.getText();
-		// skip paramName if its too complex
-		// example typescript: function f({a, b}: {a: string, b: number})
+		// Skip parameter names if they are present in the type as an object literal
+		// e.g. destructuring; { a }: { a: string }
 		const paramName = paramNameRaw.match(/[{},]/) ? "" : ` ${paramNameRaw}`;
 		if (paramTag) {
-			// Replace tag with one that contains typing info
+			// Replace tag with one that contains type info
 			const comment = paramTag.getComment();
 			const tagName = paramTag.getTagName();
 
