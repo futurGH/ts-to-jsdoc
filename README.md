@@ -1,9 +1,6 @@
 # TypeScript to JSDoc
 Transpile TypeScript code annotated with JSDoc to fully compatible JavaScript code, preserving your documentation.
 
-### A NOTE
-This program's primary purpose is to transpile TypeScript so that it can be used with documentation generators that expect JavaScript code. Any other use case is not intended and unsupported. (though I would love to see how else this can be used!)
-
 ## Usage
 
 ### Command Line
