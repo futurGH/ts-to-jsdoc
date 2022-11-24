@@ -5,6 +5,7 @@
   "main": "index.js",
   "bin": "./bin/ts-to-jsdoc",
   "scripts": {
+    "watch": "tsc --watch",
     "build": "tsc",
     "prepare": "tsc"
   },
