@@ -18,16 +18,17 @@
   "author": "futurGH",
   "license": "MIT",
   "dependencies": {
-    "arg": "^5.0.1",
-    "ts-morph": "^12.1.0"
+    "arg": "^5.0.2",
+    "ts-morph": "^12.2.0"
   },
   "devDependencies": {
-    "@types/node": "^16.11.6",
-    "@typescript-eslint/eslint-plugin": "^5.2.0",
-    "@typescript-eslint/parser": "^5.2.0",
-    "eslint": "^8.1.0",
+    "@types/node": "^16.18.3",
+    "@typescript-eslint/eslint-plugin": "^5.44.0",
+    "@typescript-eslint/parser": "^5.44.0",
+    "eslint": "^7.2.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.25.2"
+    "eslint-plugin-import": "^2.26.0",
+    "typescript": "^4.9.3"
   },
   "files": [
     "index.js",
