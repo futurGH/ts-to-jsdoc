@@ -325,7 +325,8 @@ function transpile(
 				);
 			}
 			result = result.slice(protectCommentsHeader.length);
-			return `${result}\n\n${typedefs}\n\n${interfaces}`;
+			const join = (arr: string[]) => arr.join("\n\n");
+			return `${result}\n\n${join(typedefs)}\n\n${join(interfaces)}`;
 		}
 	} catch (e) {
 		debug && console.error(e);
