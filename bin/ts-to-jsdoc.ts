@@ -57,7 +57,7 @@ args.ignore = args.ignore?.length ? normalizePaths(args.ignore) : [];
 const paths = replaceDirectoriesWithFiles(
 	[...new Set(normalizePaths(args._))], // Creating a Set then spreading removes duplicates
 )
-	.filter((filepath) => path.extname(filepath) === ".ts" && !filepath.endsWith(".d.ts"))
+	.filter((filepath) => path.extname(filepath) === ".ts")
 	.filter((filepath) => !args.ignore.some(
 		(ignoredPath) => filepath === ignoredPath || pathIsInside(filepath, ignoredPath),
 	));
