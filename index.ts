@@ -9,6 +9,7 @@ import {
 import type {
 	ClassDeclaration,
 	FunctionLikeDeclaration,
+	VariableDeclaration,
 	InterfaceDeclaration,
 	JSDoc,
 	JSDocableNode,
@@ -123,6 +124,32 @@ function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration):
 			tagName: "returns",
 			text: `{${functionReturnType}}`,
 		});
+	}
+}
+
+/**
+ * Generate @type documentation from variable type, storing it in node
+ */
+function generateVariableDocumentation(node: VariableDeclaration): void {
+	const variableDeclarationList = node.getParent();
+	const variableStatement = variableDeclarationList.getParent();
+	if (
+		Node.isVariableStatement(variableStatement) &&
+		Node.isVariableDeclarationList(variableDeclarationList) &&
+		// TODO split multiple variables: const a, b; -> const a; const b;
+		variableDeclarationList.getDeclarations().length == 1
+	) {
+		const variableType = sanitizeType(node.getType()?.getText());
+		const jsDoc = getJsDocOrCreate(variableStatement);
+		jsDoc.addTag({
+			tagName: "type",
+			text: `{${variableType}}`,
+		});
+		node.setInitializer(
+			`(() => {\nthrow new Error("` +
+			`FIXME this is a variable signature from a *.d.ts declaration file. ` +
+			`please move this to the *.js implementation file");\n})()`
+		)
 	}
 }
 
@@ -312,6 +339,31 @@ function transpile(
 			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode));
 
 		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
+
+		// transform signature declarations in d.ts files
+		Array.from(sourceFile.getExportedDeclarations().entries()).map(([name, declarations]) => {
+			declarations.map(node => {
+				if (
+					Node.isFunctionDeclaration(node) &&
+					node.getBody() == undefined
+				) {
+					// function signature
+					// not in sourceFile.getFunctions()
+					node.setBodyText(
+						`throw new Error("` +
+						`FIXME this is a function signature from a *.d.ts declaration file. ` +
+						`please move this to the *.js implementation file")`
+					)
+					generateFunctionDocumentation(node);
+					return;
+				}
+				if (Node.isVariableDeclaration(node)) {
+					// variable signature
+					generateVariableDocumentation(node);
+					return;
+				}
+			});
+		});
 
 		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
 		if (result) {
