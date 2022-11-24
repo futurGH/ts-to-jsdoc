@@ -5,6 +5,7 @@
     "target": "ES2015",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
+    "forceConsistentCasingInFileNames": true,
+  },
+  "exclude": ["test/**"],
 }
