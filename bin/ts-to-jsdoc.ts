@@ -73,9 +73,10 @@ for (const filepath of paths) {
 	}
 
 	const code = fs.readFileSync(filepath, "utf8");
-	const transpiled = transpile(code, filepath, {}, true);
-	if (transpiled === code) {
-		console.error(error(`Could not transpile ${filepath}.`));
+	const debug = false;
+	const transpiled = transpile(code, filepath, {}, debug);
+	if (transpiled == null || transpiled === code) {
+		console.error(error(`Nothing was replaced in ${filepath}.`));
 		continue;
 	}
 
