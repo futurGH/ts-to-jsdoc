@@ -4,6 +4,10 @@
   "description": "Transpile TypeScript code to fully compatible JavaScript + JSDoc comments.",
   "main": "index.js",
   "bin": "./bin/ts-to-jsdoc",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc"
+  },
   "repository": "github:futurGH/ts-to-jsdoc",
   "keywords": [
     "doc",
