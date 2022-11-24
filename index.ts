@@ -364,6 +364,9 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 
 	for (const param of interfaceNode.getTypeParameters()) {
 		jsDoc.addTag({ tagName: "template", text: param.getName() });
+		// TODO template parameter type:
+		// typescript: <M extends boolean>
+		// jsdoc: @template {boolean} M
 	}
 
 	jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
