@@ -306,10 +306,10 @@ function transpile(
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
 		const typedefs = sourceFile.getTypeAliases()
-			.map((typeAlias) => generateTypedefDocumentation(typeAlias, sourceFile));
+			.map((typeAlias) => generateTypedefDocumentation(typeAlias, sourceFile)).join("\n");
 
 		const interfaces = sourceFile.getInterfaces()
-			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode));
+			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode)).join("\n");
 
 		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
 
@@ -317,8 +317,7 @@ function transpile(
 		if (result) {
 			if (!result.startsWith(protectCommentsHeader)) {
 				throw new Error(
-					"Internal error: generated header is missing in output\n\n"
-					+ `protectCommentsHeader: ${JSON.stringify(protectCommentsHeader)}\n`
+					"Internal error: generated header is missing in output.\n\n"
 					+ `Output: ${
 						JSON.stringify(`${result.slice(protectCommentsHeader.length + 100)} ...`)
 					}`,
@@ -327,6 +326,7 @@ function transpile(
 			result = result.slice(protectCommentsHeader.length);
 			return `${result}\n\n${typedefs}\n\n${interfaces}`;
 		}
+		throw new Error("Could not emit output to memory.");
 	} catch (e) {
 		debug && console.error(e);
 		return src;
