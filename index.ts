@@ -203,11 +203,22 @@ function generateTypedefDocumentation(
 			initializer: "null",
 		}],
 	});
+	const typeParams = typeNode.getTypeParameters();
 	const jsDoc = dummyNode.addJsDoc({
 		tags: [{
 			tagName: "typedef",
 			text: `{${type}} ${name}`,
-		}],
+		},
+		...typeParams.map((param) => {
+			const constraint = param.getConstraint();
+			const defaultType = param.getDefault();
+			const paramName = param.getName();
+			const nameWithDefault = defaultType ? `[${paramName}=${defaultType.getText()}]` : paramName;
+			return {
+				tagName: "template",
+				text: `${constraint ? `{${constraint.getText()}} ` : ""}${nameWithDefault}`,
+			};
+		})],
 	}).getText();
 	dummyNode.remove();
 	return jsDoc;
