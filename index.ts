@@ -307,7 +307,18 @@ function transpile(
 			},
 		});
 
-		const code = protectCommentsHeader + src;
+		const randomStr = Array(5).fill(0).map(_ => Math.random().toString(36).slice(2)).join("");
+
+		// protect empty lines
+		const emptyLinePrefix = `//ts-to-jsdoc ${randomStr} empty line`;
+		const emptyLineSuffix = `//`;
+
+		const code = (
+			(protectCommentsHeader + src).split("\n").map(line => (
+				line.match(/^[ \t]*$/) ? (emptyLinePrefix + line + emptyLineSuffix) : line
+			)).join("\n")
+		);
+
 		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
 			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
@@ -335,6 +346,16 @@ function transpile(
 				);
 			}
 			result = result.slice(protectCommentsHeader.length);
+
+			// restore empty lines
+			result = result.split("\n").map(line => {
+				const _line = line.trim();
+				return (_line.startsWith(emptyLinePrefix)
+					? _line.slice(emptyLinePrefix.length, _line.length - emptyLineSuffix.length)
+					: line
+				);
+			}).join("\n");
+
 			return `${result}\n\n${typedefs}\n\n${interfaces}`;
 		}
 		throw new Error("Could not emit output to memory.");
