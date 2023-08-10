@@ -25,7 +25,7 @@ import type {
 declare module "ts-morph" {
 	// eslint-disable-next-line no-shadow
 	namespace Node {
-		let isObjectProperty: (node: Node) => boolean;
+		//let isObjectProperty: (node: Node) => boolean;
 	}
 }
 Node.isObjectProperty = (node): node is ObjectProperty => (
