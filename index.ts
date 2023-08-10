@@ -356,7 +356,11 @@ function transpile(
 				);
 			}).join("\n");
 
-			return `${result}\n\n${typedefs}\n\n${interfaces}`;
+			result = `${result}\n\n${typedefs}\n\n${interfaces}`;
+
+			result = result.trim() + "\n";
+
+			return result;
 		}
 		throw new Error("Could not emit output to memory.");
 	} catch (e) {
