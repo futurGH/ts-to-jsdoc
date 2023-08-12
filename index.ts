@@ -309,7 +309,7 @@ function transpile(
 		});
 
 		// Preserve blank lines in output
-		const blankLineMarker = "/* TS-TO-JSDOC BLANK LINE */";
+		const blankLineMarker = "// TS-TO-JSDOC BLANK LINE //";
 
 		const code = src.split("\n").map((line) => (
 			line.match(/^[\s\t]*$/) ? (blankLineMarker + line) : line
