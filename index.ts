@@ -297,6 +297,7 @@ function transpile(
 	// Useless variable to prevent comments from getting removed when code contains just
 	// typedefs/interfaces, which get transpiled to nothing but comments
 	const protectCommentsHeader = "const __tsToJsdoc_protectCommentsHeader = 1;\n";
+	src = protectCommentsHeader + src;
 
 	try {
 		const project = new Project({
@@ -307,7 +308,13 @@ function transpile(
 			},
 		});
 
-		const code = protectCommentsHeader + src;
+		// Preserve blank lines in output
+		const blankLineMarker = "/* TS-TO-JSDOC BLANK LINE */";
+
+		const code = src.split("\n").map((line) => (
+			line.match(/^[\s\t]*$/) ? (blankLineMarker + line) : line
+		)).join("\n");
+
 		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
 			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
@@ -325,6 +332,7 @@ function transpile(
 		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
 
 		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
+
 		if (result) {
 			if (!result.startsWith(protectCommentsHeader)) {
 				throw new Error(
@@ -335,7 +343,20 @@ function transpile(
 				);
 			}
 			result = result.slice(protectCommentsHeader.length);
-			return `${result}\n\n${typedefs}\n\n${interfaces}`;
+
+			// Restore blank lines in output
+			result = result.split("\n").map((_line) => {
+				const line = _line.trim();
+				return line.startsWith(blankLineMarker)
+					? line.slice(blankLineMarker.length)
+					: _line;
+			}).join("\n");
+
+			result = `${result}\n\n${typedefs}\n\n${interfaces}`;
+
+			result = `${result.trim()}\n`;
+
+			return result;
 		}
 		throw new Error("Could not emit output to memory.");
 	} catch (e) {
