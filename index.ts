@@ -96,7 +96,7 @@ function generateParameterDocumentation(
 		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
 	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
 		// @ts-ignore
-		tag.compilerNode.name?.getText().replace(/\[|\]/g, "").trim(),
+		tag.compilerNode.name?.getText().replace(/\[|\]|(=.*)/g, "").trim(),
 		(tag.getComment() || "").toString().trim().replace(/^[ -]+/, ""),
 	]));
 	const preferredTagName = paramTags[0]?.getTagName();
