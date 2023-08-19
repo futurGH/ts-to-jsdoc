@@ -89,32 +89,38 @@ function generateParameterDocumentation(
 	docNode: JSDocableNode,
 ): void {
 	const params = functionNode.getParameters();
+
+	// Get param tag that matches the param
+	const jsDoc = getJsDocOrCreate(docNode);
+	const paramTags = (jsDoc.getTags() || [])
+		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
+	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
+		// @ts-ignore
+		tag.compilerNode.name?.getText().replace(/\[|\]/g, "").trim(),
+		(tag.getComment() || "").toString().trim().replace(/^[ -]+/, ""),
+	]));
+	const preferredTagName = paramTags[0]?.getTagName();
+	paramTags.forEach((tag) => tag.remove());
+
 	for (const param of params) {
 		const parameterType = sanitizeType(param.getTypeNode()?.getText());
 		if (!parameterType) continue;
-		// Get param tag that matches the param
-		const jsDoc = getJsDocOrCreate(docNode);
-		const paramTag = (jsDoc.getTags() || [])
-			.filter((tag) => ["param", "parameter"].includes(tag.getTagName()))
-			// @ts-ignore
-			.find((tag) => tag.compilerNode.name?.getText() === param.getName());
 
 		const paramNameRaw = param.compilerNode.name?.getText();
+		const isOptional = param.hasQuestionToken();
+		let paramName = paramNameRaw;
+		// Wrap name in square brackets if the parameter is optional
+		paramName = isOptional ? `[${paramName}]` : paramName;
 		// Skip parameter names if they are present in the type as an object literal
 		// e.g. destructuring; { a }: { a: string }
-		const paramName = paramNameRaw.match(/[{},]/) ? "" : ` ${paramNameRaw}`;
-		if (paramTag) {
-			// Replace tag with one that contains type info
-			const comment = paramTag.getComment();
-			const tagName = paramTag.getTagName();
+		paramName = paramName.match(/[{},]/) ? "" : ` ${paramName}`;
 
-			paramTag.replaceWithText(`@${tagName} {${parameterType}}${paramName}  ${comment}`);
-		} else {
-			jsDoc.addTag({
-				tagName: "param",
-				text: `{${parameterType}}${paramName}`,
-			});
-		}
+		const comment = commentLookup[paramNameRaw.trim()];
+
+		jsDoc.addTag({
+			tagName: preferredTagName || "param",
+			text: `{${parameterType}}${paramName}${comment ? `  ${comment}` : ""}`,
+		});
 	}
 }
 
