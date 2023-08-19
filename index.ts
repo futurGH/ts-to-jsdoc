@@ -342,7 +342,7 @@ function transpile(
 					}`,
 				);
 			}
-			result = result.slice(protectCommentsHeader.length);
+			result = result.replace(protectCommentsHeader, "");
 
 			// Restore blank lines in output
 			result = result.split("\n").map((_line) => {
