@@ -119,7 +119,7 @@ function generateParameterDocumentation(
 
 		jsDoc.addTag({
 			tagName: preferredTagName || "param",
-			text: `{${parameterType}}${paramName}${comment ? `  ${comment}` : ""}`,
+			text: `{${parameterType}}${paramName}${comment ? ` - ${comment}` : ""}`,
 		});
 	}
 }
@@ -138,11 +138,11 @@ function generateReturnTypeDocumentation(
 	// Replace tag with one that contains type info if tag exists
 	if (returnsTag) {
 		const tagName = returnsTag.getTagName();
-		const comment = returnsTag.getComment();
+		const comment = (returnsTag.getComment() || "").toString().trim().replace(/^[ -]+/, "");
 		// https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler#return-type-description
 		if (functionReturnType !== "void") {
 			returnsTag.replaceWithText(
-				`@${tagName} {${functionReturnType}}${comment ? ` ${comment}` : ""}`,
+				`@${tagName} {${functionReturnType}}${comment ? ` - ${comment}` : ""}`,
 			);
 		}
 	} else {
