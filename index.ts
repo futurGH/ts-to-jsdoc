@@ -54,7 +54,7 @@ function getChildProperties(node: Node): ObjectProperty[] {
 
 /** Get JSDoc for a node or create one if there isn't any */
 function getJsDocOrCreate(node: JSDocableNode): JSDoc {
-	return node.getJsDocs()[0] || node.addJsDoc({});
+	return node.getJsDocs().at(-1) || node.addJsDoc({});
 }
 
 /** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
