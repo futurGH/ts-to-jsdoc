@@ -136,22 +136,16 @@ function generateReturnTypeDocumentation(
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
 	// Replace tag with one that contains type info if tag exists
+	const tagName = returnsTag?.getTagName() || "returns";
+	const comment = (returnsTag?.getComment() || "").toString().trim().replace(/^[ -]+/, "");
+
 	if (returnsTag) {
-		const tagName = returnsTag.getTagName();
-		const comment = (returnsTag.getComment() || "").toString().trim().replace(/^[ -]+/, "");
-		// https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler#return-type-description
-		if (functionReturnType !== "void") {
-			returnsTag.replaceWithText(
-				`@${tagName} {${functionReturnType}}${comment ? ` - ${comment}` : ""}`,
-			);
-		}
-	} else {
-		// Otherwise, create a new one
-		jsDoc.addTag({
-			tagName: "returns",
-			text: `{${functionReturnType}}`,
-		});
+		returnsTag.remove();
 	}
+	jsDoc.addTag({
+		tagName,
+		text: `{${functionReturnType}}${comment ? ` - ${comment}` : ""}`,
+	});
 }
 
 /**
