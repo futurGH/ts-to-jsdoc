@@ -53,7 +53,7 @@ function getChildProperties(node: Node): ObjectProperty[] {
 
 /** Get JSDoc for a node or create one if there isn't any */
 function getJsDocOrCreate(node: JSDocableNode): JSDoc {
-	return node.getJsDocs()[0] || node.addJsDoc({});
+	return node.getJsDocs().at(-1) || node.addJsDoc({});
 }
 
 /** Sanitize a string to use as a type in a doc comment so that it is compatible with JSDoc */
