@@ -103,11 +103,15 @@ function generateParameterDocumentation(
 	paramTags.forEach((tag) => tag.remove());
 
 	for (const param of params) {
-		const parameterType = sanitizeType(param.getTypeNode()?.getText());
-		if (!parameterType) continue;
+		const paramType = sanitizeType(param.getTypeNode()?.getText());
+		if (!paramType) continue;
 
 		const paramName = param.compilerNode.name?.getText();
 		const isOptional = param.isOptional();
+		const isRest = param.isRestParameter();
+
+		// Rest parameters are arrays, but the JSDoc syntax is `...number` instead of `number[]`
+		const paramTypeOut = isRest ? `...${paramType.replace(/\[\]\s*$/, "")}` : paramType;
 
 		let defaultValue: string;
 		if (isOptional) {
@@ -130,7 +134,7 @@ function generateParameterDocumentation(
 
 		jsDoc.addTag({
 			tagName: preferredTagName || "param",
-			text: `{${parameterType}}${paramNameOut}${comment ? ` - ${comment}` : ""}`,
+			text: `{${paramTypeOut}}${paramNameOut}${comment ? ` - ${comment}` : ""}`,
 		});
 	}
 }
