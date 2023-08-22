@@ -106,20 +106,31 @@ function generateParameterDocumentation(
 		const parameterType = sanitizeType(param.getTypeNode()?.getText());
 		if (!parameterType) continue;
 
-		const paramNameRaw = param.compilerNode.name?.getText();
-		const isOptional = param.hasQuestionToken();
-		let paramName = paramNameRaw;
-		// Wrap name in square brackets if the parameter is optional
-		paramName = isOptional ? `[${paramName}]` : paramName;
+		const paramName = param.compilerNode.name?.getText();
+		const isOptional = param.isOptional();
+
+		let defaultValue: string;
+		if (isOptional) {
+			const paramInitializer = param.getInitializer();
+			defaultValue = paramInitializer?.getText().replaceAll(/(\s|\t)*\n(\s|\t)*/g, " ");
+		}
+
+		let paramNameOut = paramName;
 		// Skip parameter names if they are present in the type as an object literal
 		// e.g. destructuring; { a }: { a: string }
-		paramName = paramName.match(/[{},]/) ? "" : ` ${paramName}`;
+		if (paramNameOut.match(/[{},]/)) paramNameOut = "";
+		if (paramNameOut && isOptional) {
+			// Wrap name in square brackets if the parameter is optional
+			const defaultValueOut = defaultValue !== undefined ? `=${defaultValue}` : "";
+			paramNameOut = `[${paramNameOut}${defaultValueOut}]`;
+		}
+		paramNameOut = paramNameOut ? ` ${paramNameOut}` : "";
 
-		const comment = commentLookup[paramNameRaw.trim()];
+		const comment = commentLookup[paramName.trim()];
 
 		jsDoc.addTag({
 			tagName: preferredTagName || "param",
-			text: `{${parameterType}}${paramName}${comment ? ` - ${comment}` : ""}`,
+			text: `{${parameterType}}${paramNameOut}${comment ? ` - ${comment}` : ""}`,
 		});
 	}
 }
