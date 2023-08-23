@@ -67,7 +67,7 @@ for (const filepath of paths) {
 		args.out ?? path.dirname(filepath),
 		`${path.basename(filepath, ".ts")}.js`,
 	);
-	if (fs.existsSync(outPath)) {
+	if (fs.existsSync(outPath) && !args.force) {
 		console.warn(warning(`Cannot write to ${outPath}; file already exists.`));
 		continue;
 	}
