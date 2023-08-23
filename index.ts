@@ -89,32 +89,53 @@ function generateParameterDocumentation(
 	docNode: JSDocableNode,
 ): void {
 	const params = functionNode.getParameters();
-	for (const param of params) {
-		const parameterType = sanitizeType(param.getTypeNode()?.getText());
-		if (!parameterType) continue;
-		// Get param tag that matches the param
-		const jsDoc = getJsDocOrCreate(docNode);
-		const paramTag = (jsDoc.getTags() || [])
-			.filter((tag) => ["param", "parameter"].includes(tag.getTagName()))
-			// @ts-ignore
-			.find((tag) => tag.compilerNode.name?.getText() === param.getName());
 
-		const paramNameRaw = param.compilerNode.name?.getText();
+	// Get param tag that matches the param
+	const jsDoc = getJsDocOrCreate(docNode);
+	const paramTags = (jsDoc.getTags() || [])
+		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
+	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
+		// @ts-ignore
+		tag.compilerNode.name?.getText().replace(/\[|\]|(=.*)/g, "").trim(),
+		(tag.getComment() || "").toString().trim(),
+	]));
+	const preferredTagName = paramTags[0]?.getTagName();
+	paramTags.forEach((tag) => tag.remove());
+
+	for (const param of params) {
+		const paramType = sanitizeType(param.getTypeNode()?.getText());
+		if (!paramType) continue;
+
+		const paramName = param.compilerNode.name?.getText();
+		const isOptional = param.isOptional();
+		const isRest = param.isRestParameter();
+
+		// Rest parameters are arrays, but the JSDoc syntax is `...number` instead of `number[]`
+		const paramTypeOut = isRest ? `...${paramType.replace(/\[\]\s*$/, "")}` : paramType;
+
+		let defaultValue: string;
+		if (isOptional) {
+			const paramInitializer = param.getInitializer();
+			defaultValue = paramInitializer?.getText().replaceAll(/(\s|\t)*\n(\s|\t)*/g, " ");
+		}
+
+		let paramNameOut = paramName;
 		// Skip parameter names if they are present in the type as an object literal
 		// e.g. destructuring; { a }: { a: string }
-		const paramName = paramNameRaw.match(/[{},]/) ? "" : ` ${paramNameRaw}`;
-		if (paramTag) {
-			// Replace tag with one that contains type info
-			const comment = paramTag.getComment();
-			const tagName = paramTag.getTagName();
-
-			paramTag.replaceWithText(`@${tagName} {${parameterType}}${paramName}  ${comment}`);
-		} else {
-			jsDoc.addTag({
-				tagName: "param",
-				text: `{${parameterType}}${paramName}`,
-			});
+		if (paramNameOut.match(/[{},]/)) paramNameOut = "";
+		if (paramNameOut && isOptional) {
+			// Wrap name in square brackets if the parameter is optional
+			const defaultValueOut = defaultValue !== undefined ? `=${defaultValue}` : "";
+			paramNameOut = `[${paramNameOut}${defaultValueOut}]`;
 		}
+		paramNameOut = paramNameOut ? ` ${paramNameOut}` : "";
+
+		const comment = commentLookup[paramName.trim()];
+
+		jsDoc.addTag({
+			tagName: preferredTagName || "param",
+			text: `{${paramTypeOut}}${paramNameOut}${comment ? ` ${comment}` : ""}`,
+		});
 	}
 }
 
@@ -130,22 +151,16 @@ function generateReturnTypeDocumentation(
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
 	// Replace tag with one that contains type info if tag exists
+	const tagName = returnsTag?.getTagName() || "returns";
+	const comment = (returnsTag?.getComment() || "").toString().trim();
+
 	if (returnsTag) {
-		const tagName = returnsTag.getTagName();
-		const comment = returnsTag.getComment();
-		// https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler#return-type-description
-		if (functionReturnType !== "void") {
-			returnsTag.replaceWithText(
-				`@${tagName} {${functionReturnType}}${comment ? ` ${comment}` : ""}`,
-			);
-		}
-	} else {
-		// Otherwise, create a new one
-		jsDoc.addTag({
-			tagName: "returns",
-			text: `{${functionReturnType}}`,
-		});
+		returnsTag.remove();
 	}
+	jsDoc.addTag({
+		tagName,
+		text: `{${functionReturnType}}${comment ? ` ${comment}` : ""}`,
+	});
 }
 
 /**
