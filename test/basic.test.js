@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('basic', () => {
-  test('basic', () => {
-    const input = `
+describe("basic", () => {
+	test("function declarations are correctly documented", () => {
+		const input = `
 /**
  * Does stuff.
  */
@@ -10,7 +10,7 @@ function doStuff(param: string): number {
   return 1;
 };
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff.
  * @param {string} param
  * @returns {number}
@@ -20,6 +20,6 @@ function doStuff(param) {
 }
 ;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

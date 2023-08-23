@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('correct-order', () => {
-  test('correctly order params vs returns', () => {
-    const input = `
+describe("correct-order", () => {
+	test("correctly order param tags before return tags", () => {
+		const input = `
 /**
  * Does stuff.
  * @returns {number}
@@ -12,7 +12,7 @@ function doStuff(param: string): number {
   return 1;
 };
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff.
  * @param {string} param - A parameter.
  * @returns {number}
@@ -22,6 +22,6 @@ function doStuff(param) {
 }
 ;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

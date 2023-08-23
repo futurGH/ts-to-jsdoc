@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('inferred-return-type', () => {
-  test('Correctly give an inferred return type of a function', () => {
-    const input = `
+describe("inferred-return-type", () => {
+	test("correctly document inferred return type", () => {
+		const input = `
 /**
  * Does stuff.
  */
@@ -10,7 +10,7 @@ function doStuff(param: string) {
   return 1;
 };
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff.
  * @param {string} param
  * @returns {number}
@@ -20,6 +20,6 @@ function doStuff(param) {
 }
 ;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

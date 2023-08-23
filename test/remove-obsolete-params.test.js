@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('remove-obsolete-params', () => {
-  test('remove obsolete params', () => {
-    const input = `
+describe("remove-obsolete-params", () => {
+	test("remove obsolete params", () => {
+		const input = `
 /**
  * Does stuff.
  * @param {number} somethingWrong
@@ -11,7 +11,7 @@ function doStuff(param: string): number {
   return 1;
 };
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff.
  * @param {string} param
  * @returns {number}
@@ -21,6 +21,6 @@ function doStuff(param) {
 }
 ;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

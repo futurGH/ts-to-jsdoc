@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('default-values', () => {
-  test('param default values', () => {
-    const input = `
+describe("default-values", () => {
+	test("document param default values", () => {
+		const input = `
 /**
  * Does stuff. 1
  * @param p1 the first parameter
@@ -27,7 +27,7 @@ const doStuff3 = (f1: MyFunc = myFunc, f2: MyFunc = (p: any) => 0, f3: MyFunc = 
   return 0;
 }): number => 3;
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff. 1
  * @param {string} p1 the first parameter
  * @param {number} [p2]
@@ -67,6 +67,6 @@ const doStuff3 = (f1 = myFunc, f2 = (p) => 0, f3 = (p) => {
 
 /** @typedef {(p: any) => number} MyFunc */
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

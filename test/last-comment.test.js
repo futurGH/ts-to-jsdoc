@@ -1,8 +1,8 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('last-comment', () => {
-  test('update nearest JSDoc', () => {
-    const input = `
+describe("last-comment", () => {
+	test("update nearest JSDoc", () => {
+		const input = `
 /**
  * A random orphan JSDoc comment.
  */
@@ -13,7 +13,7 @@ function doStuff(param: string): number {
   return 1;
 };
 `;
-    const expected = `/**
+		const expected = `/**
  * A random orphan JSDoc comment.
  */
 /**
@@ -26,6 +26,6 @@ function doStuff(param) {
 }
 ;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });

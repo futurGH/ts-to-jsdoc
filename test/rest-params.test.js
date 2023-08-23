@@ -1,14 +1,14 @@
-const compareTranspile = require('./compare.js');
+const compareTranspile = require("./compare.js");
 
-describe('rest-params', () => {
-  test('Rest parameters', () => {
-    const input = `
+describe("rest-params", () => {
+	test("handle rest parameters", () => {
+		const input = `
 /**
  * Does stuff.
  */
 const doStuff = (p1: string, ...nums: number[]): number => 3;
 `;
-    const expected = `/**
+		const expected = `/**
  * Does stuff.
  * @param {string} p1
  * @param {...number} [nums]
@@ -16,6 +16,6 @@ const doStuff = (p1: string, ...nums: number[]): number => 3;
  */
 const doStuff = (p1, ...nums) => 3;
 `;
-    compareTranspile(input, expected);
-  });
+		compareTranspile(input, expected);
+	});
 });
