@@ -97,7 +97,7 @@ function generateParameterDocumentation(
 	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
 		// @ts-ignore
 		tag.compilerNode.name?.getText().replace(/\[|\]|(=.*)/g, "").trim(),
-		(tag.getComment() || "").toString().trim().replace(/^[ -]+/, ""),
+		(tag.getComment() || "").toString().trim(),
 	]));
 	const preferredTagName = paramTags[0]?.getTagName();
 	paramTags.forEach((tag) => tag.remove());
@@ -134,7 +134,7 @@ function generateParameterDocumentation(
 
 		jsDoc.addTag({
 			tagName: preferredTagName || "param",
-			text: `{${paramTypeOut}}${paramNameOut}${comment ? ` - ${comment}` : ""}`,
+			text: `{${paramTypeOut}}${paramNameOut}${comment ? ` ${comment}` : ""}`,
 		});
 	}
 }
@@ -152,14 +152,14 @@ function generateReturnTypeDocumentation(
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
 	// Replace tag with one that contains type info if tag exists
 	const tagName = returnsTag?.getTagName() || "returns";
-	const comment = (returnsTag?.getComment() || "").toString().trim().replace(/^[ -]+/, "");
+	const comment = (returnsTag?.getComment() || "").toString().trim();
 
 	if (returnsTag) {
 		returnsTag.remove();
 	}
 	jsDoc.addTag({
 		tagName,
-		text: `{${functionReturnType}}${comment ? ` - ${comment}` : ""}`,
+		text: `{${functionReturnType}}${comment ? ` ${comment}` : ""}`,
 	});
 }
 
