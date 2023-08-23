@@ -1,10 +1,7 @@
 import path from "path";
 
 import {
-	Project,
-	ScriptTarget,
-	Node,
-	SyntaxKind,
+	Node, Project, ScriptTarget, SyntaxKind,
 } from "ts-morph";
 
 import type {
@@ -146,7 +143,10 @@ function generateReturnTypeDocumentation(
 	functionNode: FunctionLikeDeclaration,
 	docNode: JSDocableNode,
 ): void {
-	const functionReturnType = sanitizeType(functionNode.getReturnType()?.getText());
+	const returnTypeNode = functionNode.getReturnTypeNode() ?? functionNode.getReturnType();
+	const functionReturnType = sanitizeType(
+		returnTypeNode.getText(functionNode.getSignature().getDeclaration()),
+	);
 	const jsDoc = getJsDocOrCreate(docNode);
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
