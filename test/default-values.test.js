@@ -29,7 +29,7 @@ const doStuff3 = (f1: MyFunc = myFunc, f2: MyFunc = (p: any) => 0, f3: MyFunc = 
 `;
     const expected = `/**
  * Does stuff. 1
- * @param {string} p1 - the first parameter
+ * @param {string} p1 the first parameter
  * @param {number} [p2]
  * @param {string} [p3='defaultValue']
  * @returns {number}
