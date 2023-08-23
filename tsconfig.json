@@ -6,5 +6,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "files": [
+    "index.ts",
+    "bin/ts-to-jsdoc.ts"
+  ]
 }
