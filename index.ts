@@ -4,6 +4,7 @@ import {
 	Project,
 	ScriptTarget,
 	Node,
+	SyntaxKind,
 } from "ts-morph";
 
 import type {
@@ -56,6 +57,21 @@ function getJsDocOrCreate(node: JSDocableNode): JSDoc {
 	return node.getJsDocs()[0] || node.addJsDoc({});
 }
 
+/** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
+function getOutputJsDocNodeOrCreate(
+	functionNode: FunctionLikeDeclaration,
+	docNode?: JSDocableNode,
+): JSDocableNode {
+	if (docNode) {
+		const funcNodeDocs = functionNode.getJsDocs();
+		if (funcNodeDocs.length) return functionNode;
+		getJsDocOrCreate(docNode);
+		return docNode;
+	}
+	getJsDocOrCreate(functionNode);
+	return functionNode;
+}
+
 /** Sanitize a string to use as a type in a doc comment so that it is compatible with JSDoc */
 function sanitizeType(str: string): string | null {
 	if (!str) return null;
@@ -66,15 +82,18 @@ function sanitizeType(str: string): string | null {
 }
 
 /**
- * Generate @param documentation from function parameters, storing it in functionNode
+ * Generate @param documentation from function parameters for functionNode, storing it in docNode
  */
-function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): void {
+function generateParameterDocumentation(
+	functionNode: FunctionLikeDeclaration,
+	docNode: JSDocableNode,
+): void {
 	const params = functionNode.getParameters();
 	for (const param of params) {
 		const parameterType = sanitizeType(param.getTypeNode()?.getText());
 		if (!parameterType) continue;
 		// Get param tag that matches the param
-		const jsDoc = getJsDocOrCreate(functionNode);
+		const jsDoc = getJsDocOrCreate(docNode);
 		const paramTag = (jsDoc.getTags() || [])
 			.filter((tag) => ["param", "parameter"].includes(tag.getTagName()))
 			// @ts-ignore
@@ -100,11 +119,14 @@ function generateParameterDocumentation(functionNode: FunctionLikeDeclaration): 
 }
 
 /**
- * Generate @returns documentation from function return type, storing it in functionNode
+ * Generate @returns documentation from function return type for functionNode, storing it in docNode
  */
-function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration): void {
+function generateReturnTypeDocumentation(
+	functionNode: FunctionLikeDeclaration,
+	docNode: JSDocableNode,
+): void {
 	const functionReturnType = sanitizeType(functionNode.getReturnType()?.getText());
-	const jsDoc = getJsDocOrCreate(functionNode);
+	const jsDoc = getJsDocOrCreate(docNode);
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
 	// Replace tag with one that contains type info if tag exists
@@ -127,11 +149,16 @@ function generateReturnTypeDocumentation(functionNode: FunctionLikeDeclaration):
 }
 
 /**
- * Generate documentation for a function, storing it in functionNode
+ * Generate documentation for a function, storing it in functionNode or docNode
  */
-function generateFunctionDocumentation(functionNode: FunctionLikeDeclaration): void {
-	generateParameterDocumentation(functionNode);
-	generateReturnTypeDocumentation(functionNode);
+function generateFunctionDocumentation(
+	functionNode: FunctionLikeDeclaration,
+	docNode?: JSDocableNode,
+): void {
+	const outputDocNode = getOutputJsDocNodeOrCreate(functionNode, docNode);
+
+	generateParameterDocumentation(functionNode, outputDocNode);
+	generateReturnTypeDocumentation(functionNode, outputDocNode);
 }
 
 /** Generate modifier documentation for class member */
@@ -329,7 +356,16 @@ function transpile(
 		const interfaces = sourceFile.getInterfaces()
 			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode)).join("\n");
 
-		sourceFile.getFunctions().forEach(generateFunctionDocumentation);
+		const directFunctions = sourceFile.getFunctions();
+		directFunctions.forEach((node) => generateFunctionDocumentation(node));
+
+		const varDeclarations = sourceFile.getVariableDeclarations();
+		varDeclarations.forEach((varDeclaration) => {
+			const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
+			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
+			if (!initializer) return undefined; // not a function
+			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+		});
 
 		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
 
