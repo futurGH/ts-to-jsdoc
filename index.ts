@@ -366,10 +366,12 @@ function transpile(
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
 		const typedefs = sourceFile.getTypeAliases()
-			.map((typeAlias) => generateTypedefDocumentation(typeAlias, sourceFile)).join("\n");
+			.map((typeAlias) => generateTypedefDocumentation(typeAlias, sourceFile).trim())
+			.join("\n");
 
 		const interfaces = sourceFile.getInterfaces()
-			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode)).join("\n");
+			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
+			.join("\n");
 
 		const directFunctions = sourceFile.getFunctions();
 		directFunctions.forEach((node) => generateFunctionDocumentation(node));
@@ -382,7 +384,11 @@ function transpile(
 			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
 		});
 
-		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
+		let result = project
+			.emitToMemory()
+			?.getFiles()
+			?.find((file) => file.filePath.slice(0, -3) === sourceFile.getFilePath().slice(0, -3))
+			?.text;
 
 		if (result) {
 			if (!result.startsWith(protectCommentsHeader)) {
@@ -401,9 +407,10 @@ function transpile(
 				return line.startsWith(blankLineMarker)
 					? line.slice(blankLineMarker.length)
 					: _line;
-			}).join("\n");
+			}).join("\n").trim();
 
-			result = `${result}\n\n${typedefs}\n\n${interfaces}`;
+			if (typedefs) result += `\n\n${typedefs}`;
+			if (interfaces) result += `\n\n${interfaces}`;
 
 			result = `${result.trim()}\n`;
 
