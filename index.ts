@@ -91,7 +91,7 @@ function generateParameterDocumentation(
 	const params = functionNode.getParameters();
 
 	// Get param tag that matches the param
-	const jsDoc = getJsDocOrCreate(functionNode);
+	const jsDoc = getJsDocOrCreate(docNode);
 	const paramTags = (jsDoc.getTags() || [])
 		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
 	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
