@@ -18,6 +18,7 @@ import type {
 	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
+	VariableDeclaration,
 } from "ts-morph";
 
 declare module "ts-morph" {
@@ -321,6 +322,23 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 	return jsDoc.getFullText();
 }
 
+function generateVarDocumentation(varNode: VariableDeclaration) {
+	const paramType = sanitizeType(varNode.getTypeNode()?.getText());
+
+	if (!paramType) {
+		return;
+	}
+
+	const jsDoc = getJsDocOrCreate(varNode.getVariableStatement());
+
+	if (!(jsDoc?.getTags() || []).find((tag) => ["type"].includes(tag.getTagName()))) {
+		jsDoc.addTag({
+			tagName: "type",
+			text: `{${paramType}}`,
+		});
+	}
+}
+
 /**
  * Transpile.
  * @param src Source code to transpile
@@ -380,8 +398,11 @@ function transpile(
 		varDeclarations.forEach((varDeclaration) => {
 			const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
-			if (!initializer) return undefined; // not a function
-			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			if (initializer) {
+				generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			} else {
+				generateVarDocumentation(varDeclaration);
+			}
 		});
 
 		let result = project
