@@ -326,6 +326,7 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 	return jsDoc.getFullText();
 }
 
+/** Generate documentation for top-level var, const, and let declarations */
 function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
 	const paramType = sanitizeType(varNode.getTypeNode()?.getText());
 	if (!paramType) {
@@ -333,8 +334,12 @@ function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
 	}
 
 	const jsDoc = getJsDoc(varNode.getVariableStatement());
-	const tags = jsDoc?.getTags() || [];
+	if (!jsDoc) {
+		// Only generate documentation for variables that have an existing comment in JSDoc format
+		return;
+	}
 
+	const tags = jsDoc?.getTags() || [];
 	if (tags.find((tag) => ["type"].includes(tag.getTagName()))) {
 		return;
 	}
