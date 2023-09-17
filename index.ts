@@ -50,9 +50,13 @@ function getChildProperties(node: Node): ObjectProperty[] {
 	return (valueDeclarations ?? []) as ObjectProperty[];
 }
 
+function getJsDoc(node: JSDocableNode): JSDoc | undefined {
+	return node.getJsDocs().at(-1);
+}
+
 /** Get JSDoc for a node or create one if there isn't any */
 function getJsDocOrCreate(node: JSDocableNode): JSDoc {
-	return node.getJsDocs().at(-1) || node.addJsDoc({});
+	return getJsDoc(node) || node.addJsDoc({});
 }
 
 /** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
@@ -322,21 +326,28 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 	return jsDoc.getFullText();
 }
 
-function generateVarDocumentation(varNode: VariableDeclaration) {
+function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
 	const paramType = sanitizeType(varNode.getTypeNode()?.getText());
-
 	if (!paramType) {
 		return;
 	}
 
-	const jsDoc = getJsDocOrCreate(varNode.getVariableStatement());
+	const jsDoc = getJsDoc(varNode.getVariableStatement());
+	const tags = jsDoc?.getTags() || [];
 
-	if (!(jsDoc?.getTags() || []).find((tag) => ["type"].includes(tag.getTagName()))) {
-		jsDoc.addTag({
-			tagName: "type",
-			text: `{${paramType}}`,
-		});
+	if (tags.find((tag) => ["type"].includes(tag.getTagName()))) {
+		return;
 	}
+
+	const constTag = tags.find((tag) => ["const", "constant"].includes(tag.getTagName()));
+	if (constTag && constTag.getComment()?.length) {
+		return;
+	}
+
+	jsDoc.addTag({
+		tagName: "type",
+		text: `{${paramType}}`,
+	});
 }
 
 /**
@@ -401,7 +412,7 @@ function transpile(
 			if (initializer) {
 				generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
 			} else {
-				generateVarDocumentation(varDeclaration);
+				generateTopLevelVariableDocumentation(varDeclaration);
 			}
 		});
 
