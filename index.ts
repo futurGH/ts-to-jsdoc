@@ -328,7 +328,7 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 
 /** Generate documentation for top-level var, const, and let declarations */
 function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
-	const paramType = sanitizeType(varNode.getTypeNode()?.getText());
+	const paramType = sanitizeType((varNode.getTypeNode() || varNode.getType())?.getText());
 	if (!paramType) {
 		return;
 	}
