@@ -63,8 +63,6 @@ const doStuff3 = (f1 = myFunc, f2 = (p) => 0, f3 = (p) => {
     return 0;
 }) => 3;
 
-
-
 /** @typedef {(p: any) => number} MyFunc */
 `;
 		compareTranspile(input, expected);
