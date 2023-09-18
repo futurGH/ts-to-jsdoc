@@ -18,10 +18,6 @@ export function someFunction(someString) {
     return { someKey: someString };
 }
 
-
-
-
-
 /** @typedef {Object} SomeType
  * @property {string} someKey 
  */

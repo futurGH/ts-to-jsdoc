@@ -18,6 +18,7 @@ import type {
 	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
+	VariableDeclaration,
 } from "ts-morph";
 
 declare module "ts-morph" {
@@ -49,9 +50,13 @@ function getChildProperties(node: Node): ObjectProperty[] {
 	return (valueDeclarations ?? []) as ObjectProperty[];
 }
 
+function getJsDoc(node: JSDocableNode): JSDoc | undefined {
+	return node.getJsDocs().at(-1);
+}
+
 /** Get JSDoc for a node or create one if there isn't any */
 function getJsDocOrCreate(node: JSDocableNode): JSDoc {
-	return node.getJsDocs().at(-1) || node.addJsDoc({});
+	return getJsDoc(node) || node.addJsDoc({});
 }
 
 /** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
@@ -321,6 +326,35 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 	return jsDoc.getFullText();
 }
 
+/** Generate documentation for top-level var, const, and let declarations */
+function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
+	const paramType = sanitizeType((varNode.getTypeNode() || varNode.getType())?.getText());
+	if (!paramType) {
+		return;
+	}
+
+	const jsDoc = getJsDoc(varNode.getVariableStatement());
+	if (!jsDoc) {
+		// Only generate documentation for variables that have an existing comment in JSDoc format
+		return;
+	}
+
+	const tags = jsDoc?.getTags() || [];
+	if (tags.find((tag) => ["type"].includes(tag.getTagName()))) {
+		return;
+	}
+
+	const constTag = tags.find((tag) => ["const", "constant"].includes(tag.getTagName()));
+	if (constTag && constTag.getComment()?.length) {
+		return;
+	}
+
+	jsDoc.addTag({
+		tagName: "type",
+		text: `{${paramType}}`,
+	});
+}
+
 /**
  * Transpile.
  * @param src Source code to transpile
@@ -380,8 +414,11 @@ function transpile(
 		varDeclarations.forEach((varDeclaration) => {
 			const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
-			if (!initializer) return undefined; // not a function
-			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			if (initializer) {
+				generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			} else {
+				generateTopLevelVariableDocumentation(varDeclaration);
+			}
 		});
 
 		let result = project
