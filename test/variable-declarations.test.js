@@ -33,6 +33,19 @@ var baz = true;
 		compareTranspile(input, expected);
 	});
 
+	test("document variables without initializers", () => {
+		const input = `
+/** Foo */
+let foo: string;
+`;
+		const expected = `/**
+ * Foo
+ * @type {string}
+ */
+let foo;
+`;
+	});
+
 	test("don't overwrite existing type tags", () => {
 		const input = `
 /**
