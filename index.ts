@@ -234,17 +234,24 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
  * Generate @typedefs from type aliases
  * @return A JSDoc comment containing the typedef
  */
-function generateTypedefDocumentation(typeNode: TypeAliasDeclaration): string {
-	const name = typeNode.getName();
-	const jsDoc = getJsDocOrCreate(typeNode);
+function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
+	const name = typeAlias.getName();
+	const jsDoc = getJsDocOrCreate(typeAlias);
 
-	let { type } = typeNode.getStructure();
-	if (typeof type !== "string") return jsDoc.getFullText();
-	type = sanitizeType(type);
+	const typeNode = typeAlias.getTypeNode();
+	if (Node.isTypeLiteral(typeNode) && typeAlias.getType().isObject()) {
+		jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
+		typeNode.getProperties().forEach((prop) => {
+			generateObjectPropertyDocumentation(prop, jsDoc);
+		});
+	} else {
+		let { type } = typeAlias.getStructure();
+		if (typeof type !== "string") return jsDoc.getFullText();
+		type = sanitizeType(type);
+		jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
+	}
 
-	const typeParams = typeNode.getTypeParameters();
-
-	jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
+	const typeParams = typeAlias.getTypeParameters();
 	typeParams.forEach((param) => {
 		const constraint = param.getConstraint();
 		const defaultType = param.getDefault();
@@ -287,7 +294,7 @@ function generateObjectPropertyDocumentation(
 			?.getTags()
 			?.some((tag) => tag.getTagName() === "optional");
 	// Copy over existing description if there is one
-	const existingPropDocs = node.getJsDocs()?.[0]?.getDescription() || "";
+	const existingPropDocs = node.getJsDocs()?.[0]?.getDescription()?.trim() || "";
 	const children = getChildProperties(node);
 
 	if (children.length) propType = "Object";
