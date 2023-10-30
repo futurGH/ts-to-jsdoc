@@ -1,6 +1,6 @@
 {
   "name": "ts-to-jsdoc",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Transpile TypeScript code to fully compatible JavaScript + JSDoc comments.",
   "main": "index.js",
   "bin": "./bin/ts-to-jsdoc",
