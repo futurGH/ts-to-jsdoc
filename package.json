@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "arg": "^5.0.1",
-    "ts-morph": "^12.1.0"
+    "ts-morph": "^20.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.4",
