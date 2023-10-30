@@ -234,41 +234,29 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
  * Generate @typedefs from type aliases
  * @return A JSDoc comment containing the typedef
  */
-function generateTypedefDocumentation(
-	typeNode: TypeAliasDeclaration,
-	sourceFile: SourceFile,
-): string {
-	// Create dummy node to assign typedef documentation to
-	// (will be deleted afterwards)
+function generateTypedefDocumentation(typeNode: TypeAliasDeclaration): string {
 	const name = typeNode.getName();
+	const jsDoc = getJsDocOrCreate(typeNode);
+
 	let { type } = typeNode.getStructure();
-	if (typeof type !== "string") return;
+	if (typeof type !== "string") return jsDoc.getFullText();
 	type = sanitizeType(type);
-	const dummyNode = sourceFile.addVariableStatement({
-		declarations: [{
-			name: `__dummy${name}`,
-			initializer: "null",
-		}],
-	});
+
 	const typeParams = typeNode.getTypeParameters();
-	const jsDoc = dummyNode.addJsDoc({
-		tags: [{
-			tagName: "typedef",
-			text: `{${type}} ${name}`,
-		},
-		...typeParams.map((param) => {
-			const constraint = param.getConstraint();
-			const defaultType = param.getDefault();
-			const paramName = param.getName();
-			const nameWithDefault = defaultType ? `[${paramName}=${defaultType.getText()}]` : paramName;
-			return {
-				tagName: "template",
-				text: `${constraint ? `{${constraint.getText()}} ` : ""}${nameWithDefault}`,
-			};
-		})],
-	}).getText();
-	dummyNode.remove();
-	return jsDoc;
+
+	jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
+	typeParams.forEach((param) => {
+		const constraint = param.getConstraint();
+		const defaultType = param.getDefault();
+		const paramName = param.getName();
+		const nameWithDefault = defaultType ? `[${paramName}=${defaultType.getText()}]` : paramName;
+		jsDoc.addTag({
+			tagName: "template",
+			text: `${constraint ? `{${constraint.getText()}} ` : ""}${nameWithDefault}`,
+		});
+	});
+
+	return jsDoc.getFullText();
 }
 
 /**
@@ -400,7 +388,7 @@ function transpile(
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
 		const typedefs = sourceFile.getTypeAliases()
-			.map((typeAlias) => generateTypedefDocumentation(typeAlias, sourceFile).trim())
+			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
 			.join("\n");
 
 		const interfaces = sourceFile.getInterfaces()
