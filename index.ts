@@ -445,6 +445,7 @@ function transpile(
 			if (interfaces) result += `\n\n${interfaces}`;
 
 			result = `${result.trim()}\n`;
+			result = result.replace(/\/\*\* \@([^\n]+)((?:\n \* .+)+)/g, '/**\n * @$1$2');
 
 			return result;
 		}
