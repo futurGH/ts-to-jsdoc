@@ -7,7 +7,8 @@ type Test = {
     prop: string;
 };
 `;
-		const expected = `/** @typedef {Object} Test
+		const expected = `/**
+ * @typedef {Object} Test
  * @property {string} prop 
  */
 `;
@@ -23,7 +24,8 @@ type Test = {
     prop: string;
 };
 `;
-		const expected = `/** @typedef {Object} Test
+		const expected = `/**
+ * @typedef {Object} Test
  * @property {string} prop Comment
  */
 `;

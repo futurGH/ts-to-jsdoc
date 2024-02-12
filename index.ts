@@ -15,7 +15,6 @@ import type {
 	PropertyAssignment,
 	PropertyDeclaration,
 	PropertySignature,
-	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
@@ -59,6 +58,16 @@ function getJsDocOrCreate(node: JSDocableNode): JSDoc {
 	return getJsDoc(node) || node.addJsDoc({});
 }
 
+/**
+ * getJsDocOrCreate, but if JSDoc is created, insert a newline at the beginning
+ * so that the first line of JSDoc doesn't appear on the same line as `/**`
+ */
+function getJsDocOrCreateMultiline(node: JSDocableNode): JSDoc {
+	return getJsDoc(node) || node.addJsDoc({
+		description: "\n",
+	});
+}
+
 /** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
 function getOutputJsDocNodeOrCreate(
 	functionNode: FunctionLikeDeclaration,
@@ -67,10 +76,10 @@ function getOutputJsDocNodeOrCreate(
 	if (docNode) {
 		const funcNodeDocs = functionNode.getJsDocs();
 		if (funcNodeDocs.length) return functionNode;
-		getJsDocOrCreate(docNode);
+		getJsDocOrCreateMultiline(docNode);
 		return docNode;
 	}
-	getJsDocOrCreate(functionNode);
+	getJsDocOrCreateMultiline(functionNode);
 	return functionNode;
 }
 
@@ -92,8 +101,11 @@ function generateParameterDocumentation(
 ): void {
 	const params = functionNode.getParameters();
 
-	// Get param tag that matches the param
-	const jsDoc = getJsDocOrCreate(docNode);
+	if (!params.length) return;
+
+	const jsDoc = getJsDocOrCreateMultiline(docNode);
+
+	// Get existing param tags, store their comments, then remove them
 	const paramTags = (jsDoc.getTags() || [])
 		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
 	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
@@ -236,9 +248,17 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
  */
 function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
 	const name = typeAlias.getName();
-	const jsDoc = getJsDocOrCreate(typeAlias);
-
 	const typeNode = typeAlias.getTypeNode();
+
+	const isObjectType = Node.isTypeLiteral(typeNode) && typeAlias.getType().isObject();
+	const properties = isObjectType ? typeNode.getProperties() : [];
+	const typeParams = typeAlias.getTypeParameters();
+
+	// If we're going to have multiple tags, we need to create a multiline JSDoc
+	const jsDoc = properties.length || typeParams.length
+		? getJsDocOrCreateMultiline(typeAlias)
+		: getJsDocOrCreate(typeAlias);
+
 	if (Node.isTypeLiteral(typeNode) && typeAlias.getType().isObject()) {
 		jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
 		typeNode.getProperties().forEach((prop) => {
@@ -251,7 +271,6 @@ function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
 		jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
 	}
 
-	const typeParams = typeAlias.getTypeParameters();
 	typeParams.forEach((param) => {
 		const constraint = param.getConstraint();
 		const defaultType = param.getDefault();
@@ -312,7 +331,7 @@ function generateObjectPropertyDocumentation(
 /** Generate @typedefs from interfaces */
 function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): string {
 	const name = interfaceNode.getName();
-	const jsDoc = getJsDocOrCreate(interfaceNode);
+	const jsDoc = getJsDocOrCreateMultiline(interfaceNode);
 
 	jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
 	interfaceNode.getProperties().forEach((prop) => {
