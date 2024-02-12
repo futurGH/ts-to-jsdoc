@@ -210,21 +210,21 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
  * so that documentation is preserved when transpiling
  */
 function generateInitializerDocumentation(classPropertyNode: ObjectProperty): void {
-	const jsDoc = getJsDocOrCreate(classPropertyNode);
 	if (!classPropertyNode.getStructure()?.initializer) {
 		classPropertyNode.setInitializer("undefined");
 	}
 	const initializer = classPropertyNode.getStructure()?.initializer;
 	if (initializer !== "undefined") {
+		const jsDoc = getJsDocOrCreate(classPropertyNode);
 		jsDoc.addTag({ tagName: "default", text: initializer });
 	}
 }
 
 /** Document the class itself; at the moment just its extends signature */
 function generateClassBaseDocumentation(classNode: ClassDeclaration) {
-	const jsDoc = getJsDocOrCreate(classNode);
 	const extendedClass = classNode.getExtends();
 	if (extendedClass) {
+		const jsDoc = getJsDocOrCreate(classNode);
 		jsDoc.addTag({ tagName: "extends", text: extendedClass.getText() });
 	}
 }

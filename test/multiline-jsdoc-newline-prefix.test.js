@@ -38,8 +38,7 @@ function baz() {
 class Test {}
 class Test2 extends Test {}
 `;
-		const expected = `/** */
-class Test {
+		const expected = `class Test {
 }
 /** @extends Test */
 class Test2 extends Test {
