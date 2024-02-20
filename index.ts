@@ -83,15 +83,6 @@ function getOutputJsDocNodeOrCreate(
 	return functionNode;
 }
 
-/** Sanitize a string to use as a type in a doc comment so that it is compatible with JSDoc */
-function sanitizeType(str: string): string | null {
-	if (!str) return null;
-	// Convert `typeof MyClass` syntax to `Class<MyClass>`
-	const extractedClassFromTypeof = /{*typeof\s+([^(?:}|\s);]*)/gm.exec(str)?.[1];
-	if (extractedClassFromTypeof) str = `Class<${extractedClassFromTypeof}>`;
-	return str;
-}
-
 /**
  * Generate @param documentation from function parameters for functionNode, storing it in docNode
  */
@@ -117,7 +108,7 @@ function generateParameterDocumentation(
 	paramTags.forEach((tag) => tag.remove());
 
 	for (const param of params) {
-		const paramType = sanitizeType(param.getTypeNode()?.getText());
+		const paramType = param.getTypeNode()?.getText();
 		if (!paramType) continue;
 
 		const paramName = param.compilerNode.name?.getText();
@@ -161,9 +152,7 @@ function generateReturnTypeDocumentation(
 	docNode: JSDocableNode,
 ): void {
 	const returnTypeNode = functionNode.getReturnTypeNode() ?? functionNode.getReturnType();
-	const functionReturnType = sanitizeType(
-		returnTypeNode.getText(functionNode.getSignature().getDeclaration()),
-	);
+	const functionReturnType = returnTypeNode.getText(functionNode.getSignature().getDeclaration());
 	const jsDoc = getJsDocOrCreate(docNode);
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
@@ -265,9 +254,8 @@ function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
 			generateObjectPropertyDocumentation(prop, jsDoc);
 		});
 	} else {
-		let { type } = typeAlias.getStructure();
+		const { type } = typeAlias.getStructure();
 		if (typeof type !== "string") return jsDoc.getFullText();
-		type = sanitizeType(type);
 		jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
 	}
 
@@ -303,9 +291,7 @@ function generateObjectPropertyDocumentation(
 	if (!topLevelCall) name = `${name}.${node.getName()}`;
 	let propType = node.getTypeNode()
 		?.getText()
-		?.replace(/\n/g, "")
-		?.replace(/\s/g, "");
-	propType = sanitizeType(propType);
+		?.replace(/\n/g, "")?.trim();
 
 	const isOptional = node.hasQuestionToken()
 		|| node.getJsDocs()
@@ -342,7 +328,7 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 
 /** Generate documentation for top-level var, const, and let declarations */
 function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
-	const paramType = sanitizeType((varNode.getTypeNode() || varNode.getType())?.getText());
+	const paramType = (varNode.getTypeNode() || varNode.getType())?.getText();
 	if (!paramType) {
 		return;
 	}
