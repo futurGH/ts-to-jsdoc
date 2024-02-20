@@ -90,4 +90,53 @@ interface SomeType {
 `;
 		compareTranspile(input, expected);
 	});
+
+	test("class properties and methods receive JSDoc with leading newline", () => {
+		const input = `
+class Test {
+	/** Property */
+	private readonly prop1: string;
+	
+	protected prop2: number;
+	
+	/** Method */
+	static async method1() {}
+	
+	private method2(): string {
+		return "method2";
+	}
+}
+`;
+		const expected = `
+class Test {
+    /**
+     * Property
+     * @private
+     * @readonly
+     */
+    prop1 = undefined;
+
+    /**
+     * @protected
+     */
+    prop2 = undefined;
+
+    /**
+     * Method
+     * @static
+     * @returns {Promise<void>}
+     */
+    static async method1() { }
+
+    /**
+     * @private
+     * @returns {string}
+     */
+    method2() {
+        return "method2";
+    }
+}
+`;
+		compareTranspile(input, expected);
+	});
 });

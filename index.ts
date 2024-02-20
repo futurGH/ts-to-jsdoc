@@ -199,7 +199,7 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
 	for (const modifier of modifiers) {
 		const text = modifier?.getText();
 		if (["public", "private", "protected", "readonly", "static"].includes(text)) {
-			const jsDoc = getJsDocOrCreate(classMemberNode);
+			const jsDoc = getJsDocOrCreateMultiline(classMemberNode);
 			jsDoc.addTag({ tagName: text });
 		}
 	}
