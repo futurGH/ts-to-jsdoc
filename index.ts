@@ -108,7 +108,7 @@ function generateParameterDocumentation(
 	paramTags.forEach((tag) => tag.remove());
 
 	for (const param of params) {
-		const paramType = param.getTypeNode()?.getText();
+		const paramType = param.getTypeNode()?.getText() || param.getType().getText();
 		if (!paramType) continue;
 
 		const paramName = param.compilerNode.name?.getText();
