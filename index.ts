@@ -84,7 +84,7 @@ function getOutputJsDocNodeOrCreate(
 }
 
 /**
- * Generate @param documentation from function parameters for functionNode, storing it in docNode
+ * Generate `@param` documentation from function parameters for functionNode, storing it in docNode
  */
 function generateParameterDocumentation(
 	functionNode: FunctionLikeDeclaration,
@@ -145,7 +145,7 @@ function generateParameterDocumentation(
 }
 
 /**
- * Generate @returns documentation from function return type for functionNode, storing it in docNode
+ * Generate `@returns` documentation from function return type for functionNode, storing it in docNode
  */
 function generateReturnTypeDocumentation(
 	functionNode: FunctionLikeDeclaration,
@@ -232,7 +232,7 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
 }
 
 /**
- * Generate @typedefs from type aliases
+ * Generate `@typedefs` from type aliases
  * @return A JSDoc comment containing the typedef
  */
 function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
@@ -314,7 +314,7 @@ function generateObjectPropertyDocumentation(
 	}
 }
 
-/** Generate @typedefs from interfaces */
+/** Generate `@typedefs` from interfaces */
 function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): string {
 	const name = interfaceNode.getName();
 	const jsDoc = getJsDocOrCreateMultiline(interfaceNode);
