@@ -7,6 +7,7 @@ import {
 import type {
 	ClassDeclaration,
 	FunctionLikeDeclaration,
+	ImportDeclaration,
 	InterfaceDeclaration,
 	JSDoc,
 	JSDocableNode,
@@ -38,6 +39,50 @@ type ObjectProperty = JSDocableNode & TypedNode & (
 	| PropertySignature
 );
 type ClassMemberNode = JSDocableNode & ModifierableNode & ObjectProperty & MethodDeclaration;
+
+// This function converts something like:
+//   import type {
+// 	   ImportDeclaration,
+//     ClassDeclaration,
+//     FunctionLikeDeclaration,
+//   } from 'ts-morph'
+// Into:
+//   @typedef {import('ts-morph').ImportDeclaration      } ImportDeclaration
+//   @typedef {import('ts-morph').ClassDeclaration       } ClassDeclaration
+//   @typedef {import('ts-morph').FunctionLikeDeclaration} FunctionLikeDeclaration
+function convertImportDeclarationsToTypedefs(
+	importDeclarations: ImportDeclaration[]
+): string {
+	let out = '';
+	for (const importDeclaration of importDeclarations) {
+		const {importClause, moduleSpecifier} = importDeclaration.compilerNode;
+		if (!importClause.isTypeOnly) {
+			continue;
+		}
+		if (!importClause.namedBindings) {
+			continue;
+		}
+		// @ts-ignore
+		const {elements} = importClause.namedBindings;
+		// @ts-ignore
+		const moduleSpecifierName = moduleSpecifier.text;
+		// In case of: import type * as ABC from "abc";
+		//     Output: /** @typedef {import('abc')} ABC */
+		if (!elements) {
+			// @ts-ignore
+			const asName = importClause.namedBindings.name.getText();
+			out += `/** @typedef {import('${moduleSpecifierName}')} ${asName} */\n`;
+			continue;
+		}
+		for (const element of elements) {
+			if (element.kind === SyntaxKind.ImportSpecifier) {
+				const elementName = element.name.text;
+				out += `/** @typedef {import('${moduleSpecifierName}').${elementName}} ${elementName} */\n`;
+			}
+		}
+	}
+	return out;
+}
 
 /** Get children for object node */
 function getChildProperties(node: Node): ObjectProperty[] {
@@ -399,6 +444,9 @@ function transpile(
 
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
+		const importDeclarations = sourceFile.getImportDeclarations();
+		const importDeclarationsToTypedefs = convertImportDeclarationsToTypedefs(importDeclarations);
+
 		const typedefs = sourceFile.getTypeAliases()
 			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
 			.join("\n");
@@ -445,7 +493,7 @@ function transpile(
 					? line.slice(blankLineMarker.length)
 					: _line;
 			}).join("\n").trim();
-
+			result = importDeclarationsToTypedefs + result;
 			if (typedefs) result += `\n\n${typedefs}`;
 			if (interfaces) result += `\n\n${interfaces}`;
 
