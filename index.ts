@@ -7,6 +7,7 @@ import {
 import type {
 	ClassDeclaration,
 	FunctionLikeDeclaration,
+	ImportDeclaration,
 	InterfaceDeclaration,
 	JSDoc,
 	JSDocableNode,
@@ -81,6 +82,35 @@ function getOutputJsDocNodeOrCreate(
 	}
 	getJsDocOrCreateMultiline(functionNode);
 	return functionNode;
+}
+
+/** Generate `@typedef` declarations for type imports */
+function generateImportDeclarationDocumentation(
+	importDeclaration: ImportDeclaration,
+): string {
+	// We're only interested in type imports
+	if (!importDeclaration.isTypeOnly()) {
+		return "";
+	}
+
+	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+
+	const defaultImport = importDeclaration.getDefaultImport()?.getText();
+	if (defaultImport) {
+		return `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */`;
+	}
+
+	const namedImports = importDeclaration.getNamedImports();
+	if (!namedImports?.length) {
+		return "";
+	}
+
+	return namedImports.map((namedImport) => {
+		const name = namedImport.getName();
+		const aliasNode = namedImport.getAliasNode();
+		const alias = aliasNode?.getText() || name;
+		return `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */`;
+	}).join("\n");
 }
 
 /**
@@ -399,13 +429,20 @@ function transpile(
 
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
+		const importDeclarations = sourceFile.getImportDeclarations()
+			.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
+			.join("\n")
+			.trim();
+
 		const typedefs = sourceFile.getTypeAliases()
 			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const interfaces = sourceFile.getInterfaces()
 			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const directFunctions = sourceFile.getFunctions();
 		directFunctions.forEach((node) => generateFunctionDocumentation(node));
@@ -446,6 +483,7 @@ function transpile(
 					: _line;
 			}).join("\n").trim();
 
+			if (importDeclarations) result = `${importDeclarations}\n\n${result}`;
 			if (typedefs) result += `\n\n${typedefs}`;
 			if (interfaces) result += `\n\n${interfaces}`;
 
