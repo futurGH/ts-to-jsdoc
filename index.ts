@@ -40,50 +40,6 @@ type ObjectProperty = JSDocableNode & TypedNode & (
 );
 type ClassMemberNode = JSDocableNode & ModifierableNode & ObjectProperty & MethodDeclaration;
 
-// This function converts something like:
-//   import type {
-// 	   ImportDeclaration,
-//     ClassDeclaration,
-//     FunctionLikeDeclaration,
-//   } from 'ts-morph'
-// Into:
-//   @typedef {import('ts-morph').ImportDeclaration      } ImportDeclaration
-//   @typedef {import('ts-morph').ClassDeclaration       } ClassDeclaration
-//   @typedef {import('ts-morph').FunctionLikeDeclaration} FunctionLikeDeclaration
-function convertImportDeclarationsToTypedefs(
-	importDeclarations: ImportDeclaration[]
-): string {
-	let out = '';
-	for (const importDeclaration of importDeclarations) {
-		const {importClause, moduleSpecifier} = importDeclaration.compilerNode;
-		if (!importClause.isTypeOnly) {
-			continue;
-		}
-		if (!importClause.namedBindings) {
-			continue;
-		}
-		// @ts-ignore
-		const {elements} = importClause.namedBindings;
-		// @ts-ignore
-		const moduleSpecifierName = moduleSpecifier.text;
-		// In case of: import type * as ABC from "abc";
-		//     Output: /** @typedef {import('abc')} ABC */
-		if (!elements) {
-			// @ts-ignore
-			const asName = importClause.namedBindings.name.getText();
-			out += `/** @typedef {import('${moduleSpecifierName}')} ${asName} */\n`;
-			continue;
-		}
-		for (const element of elements) {
-			if (element.kind === SyntaxKind.ImportSpecifier) {
-				const elementName = element.name.text;
-				out += `/** @typedef {import('${moduleSpecifierName}').${elementName}} ${elementName} */\n`;
-			}
-		}
-	}
-	return out;
-}
-
 /** Get children for object node */
 function getChildProperties(node: Node): ObjectProperty[] {
 	const properties = node?.getType()?.getProperties();
@@ -126,6 +82,35 @@ function getOutputJsDocNodeOrCreate(
 	}
 	getJsDocOrCreateMultiline(functionNode);
 	return functionNode;
+}
+
+/** Generate `@typedef` declarations for type imports */
+function generateImportDeclarationDocumentation(
+	importDeclaration: ImportDeclaration,
+): string {
+	// We're only interested in type imports
+	if (!importDeclaration.isTypeOnly()) {
+		return "";
+	}
+
+	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+
+	const defaultImport = importDeclaration.getDefaultImport()?.getText();
+	if (defaultImport) {
+		return `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */`;
+	}
+
+	const namedImports = importDeclaration.getNamedImports();
+	if (!namedImports?.length) {
+		return "";
+	}
+
+	return namedImports.map((namedImport) => {
+		const name = namedImport.getName();
+		const aliasNode = namedImport.getAliasNode();
+		const alias = aliasNode?.getText() || name;
+		return `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */`;
+	}).join("\n");
 }
 
 /**
@@ -444,16 +429,20 @@ function transpile(
 
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
-		const importDeclarations = sourceFile.getImportDeclarations();
-		const importDeclarationsToTypedefs = convertImportDeclarationsToTypedefs(importDeclarations);
+		const importDeclarations = sourceFile.getImportDeclarations()
+			.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
+			.join("\n")
+			.trim();
 
 		const typedefs = sourceFile.getTypeAliases()
 			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const interfaces = sourceFile.getInterfaces()
 			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const directFunctions = sourceFile.getFunctions();
 		directFunctions.forEach((node) => generateFunctionDocumentation(node));
@@ -493,7 +482,8 @@ function transpile(
 					? line.slice(blankLineMarker.length)
 					: _line;
 			}).join("\n").trim();
-			result = importDeclarationsToTypedefs + result;
+
+			if (importDeclarations) result = `${importDeclarations}\n\n${result}`;
 			if (typedefs) result += `\n\n${typedefs}`;
 			if (interfaces) result += `\n\n${interfaces}`;
 
