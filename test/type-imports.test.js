@@ -33,4 +33,15 @@ export {};
 `;
 		compareTranspile(input, expected);
 	});
+
+	test("document named type imports but not default value import", () => {
+		const input = `
+import ts, { type Node } from "ts-morph";
+`;
+		const expected = `/** @typedef {import('ts-morph').Node} Node */
+
+export {};
+`;
+		compareTranspile(input, expected);
+	});
 });

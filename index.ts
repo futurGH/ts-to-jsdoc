@@ -88,29 +88,27 @@ function getOutputJsDocNodeOrCreate(
 function generateImportDeclarationDocumentation(
 	importDeclaration: ImportDeclaration,
 ): string {
-	// We're only interested in type imports
-	if (!importDeclaration.isTypeOnly()) {
-		return "";
-	}
+	let typedefs = "";
 
 	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+	const declarationIsTypeOnly = importDeclaration.isTypeOnly();
 
 	const defaultImport = importDeclaration.getDefaultImport()?.getText();
-	if (defaultImport) {
-		return `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */`;
+	if (defaultImport && declarationIsTypeOnly) {
+		typedefs += `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */\n`;
 	}
 
-	const namedImports = importDeclaration.getNamedImports();
-	if (!namedImports?.length) {
-		return "";
-	}
+	for (const namedImport of importDeclaration.getNamedImports() ?? []) {
+		if (!declarationIsTypeOnly && !namedImport.isTypeOnly()) continue;
 
-	return namedImports.map((namedImport) => {
 		const name = namedImport.getName();
 		const aliasNode = namedImport.getAliasNode();
 		const alias = aliasNode?.getText() || name;
-		return `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */`;
-	}).join("\n");
+
+		typedefs += `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */\n`;
+	}
+
+	return typedefs;
 }
 
 /**
