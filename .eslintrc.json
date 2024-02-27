@@ -3,8 +3,12 @@
 		"es2021": true,
 		"node": true,
 		"jest/globals": true
-    },
-	"extends": ["airbnb-base", "plugin:@typescript-eslint/recommended"],
+	},
+	"extends": [
+		"airbnb-base",
+		"prettier",
+		"plugin:@typescript-eslint/recommended"
+	],
 	"parser": "@typescript-eslint/parser",
 	"parserOptions": {
 		"ecmaVersion": 12,
