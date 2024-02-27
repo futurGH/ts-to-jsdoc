@@ -47,7 +47,8 @@ function doStuff1(p1, p2, p3 = 'defaultValue') {
  * @returns {number}
  */
 const doStuff2 = (q1, q2 = false, q3 = 123) => 2;
-/** @param {any} p
+/**
+ * @param {any} p
  * @returns {number}
  */
 const myFunc = (p) => 0;

@@ -7,6 +7,7 @@ import {
 import type {
 	ClassDeclaration,
 	FunctionLikeDeclaration,
+	ImportDeclaration,
 	InterfaceDeclaration,
 	JSDoc,
 	JSDocableNode,
@@ -15,7 +16,6 @@ import type {
 	PropertyAssignment,
 	PropertyDeclaration,
 	PropertySignature,
-	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
@@ -59,6 +59,16 @@ function getJsDocOrCreate(node: JSDocableNode): JSDoc {
 	return getJsDoc(node) || node.addJsDoc({});
 }
 
+/**
+ * getJsDocOrCreate, but if JSDoc is created, insert a newline at the beginning
+ * so that the first line of JSDoc doesn't appear on the same line as `/**`
+ */
+function getJsDocOrCreateMultiline(node: JSDocableNode): JSDoc {
+	return getJsDoc(node) || node.addJsDoc({
+		description: "\n",
+	});
+}
+
 /** Return the node most suitable for JSDoc for a function, adding JSDoc if there isn't any */
 function getOutputJsDocNodeOrCreate(
 	functionNode: FunctionLikeDeclaration,
@@ -67,24 +77,42 @@ function getOutputJsDocNodeOrCreate(
 	if (docNode) {
 		const funcNodeDocs = functionNode.getJsDocs();
 		if (funcNodeDocs.length) return functionNode;
-		getJsDocOrCreate(docNode);
+		getJsDocOrCreateMultiline(docNode);
 		return docNode;
 	}
-	getJsDocOrCreate(functionNode);
+	getJsDocOrCreateMultiline(functionNode);
 	return functionNode;
 }
 
-/** Sanitize a string to use as a type in a doc comment so that it is compatible with JSDoc */
-function sanitizeType(str: string): string | null {
-	if (!str) return null;
-	// Convert `typeof MyClass` syntax to `Class<MyClass>`
-	const extractedClassFromTypeof = /{*typeof\s+([^(?:}|\s);]*)/gm.exec(str)?.[1];
-	if (extractedClassFromTypeof) str = `Class<${extractedClassFromTypeof}>`;
-	return str;
+/** Generate `@typedef` declarations for type imports */
+function generateImportDeclarationDocumentation(
+	importDeclaration: ImportDeclaration,
+): string {
+	let typedefs = "";
+
+	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+	const declarationIsTypeOnly = importDeclaration.isTypeOnly();
+
+	const defaultImport = importDeclaration.getDefaultImport()?.getText();
+	if (defaultImport && declarationIsTypeOnly) {
+		typedefs += `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */\n`;
+	}
+
+	for (const namedImport of importDeclaration.getNamedImports() ?? []) {
+		if (!declarationIsTypeOnly && !namedImport.isTypeOnly()) continue;
+
+		const name = namedImport.getName();
+		const aliasNode = namedImport.getAliasNode();
+		const alias = aliasNode?.getText() || name;
+
+		typedefs += `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */\n`;
+	}
+
+	return typedefs;
 }
 
 /**
- * Generate @param documentation from function parameters for functionNode, storing it in docNode
+ * Generate `@param` documentation from function parameters for functionNode, storing it in docNode
  */
 function generateParameterDocumentation(
 	functionNode: FunctionLikeDeclaration,
@@ -92,8 +120,11 @@ function generateParameterDocumentation(
 ): void {
 	const params = functionNode.getParameters();
 
-	// Get param tag that matches the param
-	const jsDoc = getJsDocOrCreate(docNode);
+	if (!params.length) return;
+
+	const jsDoc = getJsDocOrCreateMultiline(docNode);
+
+	// Get existing param tags, store their comments, then remove them
 	const paramTags = (jsDoc.getTags() || [])
 		.filter((tag) => ["param", "parameter"].includes(tag.getTagName()));
 	const commentLookup = Object.fromEntries(paramTags.map((tag) => [
@@ -105,7 +136,7 @@ function generateParameterDocumentation(
 	paramTags.forEach((tag) => tag.remove());
 
 	for (const param of params) {
-		const paramType = sanitizeType(param.getTypeNode()?.getText());
+		const paramType = param.getTypeNode()?.getText() || param.getType().getText();
 		if (!paramType) continue;
 
 		const paramName = param.compilerNode.name?.getText();
@@ -142,16 +173,14 @@ function generateParameterDocumentation(
 }
 
 /**
- * Generate @returns documentation from function return type for functionNode, storing it in docNode
+ * Generate `@returns` documentation from function return type for functionNode, storing it in docNode
  */
 function generateReturnTypeDocumentation(
 	functionNode: FunctionLikeDeclaration,
 	docNode: JSDocableNode,
 ): void {
 	const returnTypeNode = functionNode.getReturnTypeNode() ?? functionNode.getReturnType();
-	const functionReturnType = sanitizeType(
-		returnTypeNode.getText(functionNode.getSignature().getDeclaration()),
-	);
+	const functionReturnType = returnTypeNode.getText(functionNode.getSignature().getDeclaration());
 	const jsDoc = getJsDocOrCreate(docNode);
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
@@ -187,7 +216,7 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
 	for (const modifier of modifiers) {
 		const text = modifier?.getText();
 		if (["public", "private", "protected", "readonly", "static"].includes(text)) {
-			const jsDoc = getJsDocOrCreate(classMemberNode);
+			const jsDoc = getJsDocOrCreateMultiline(classMemberNode);
 			jsDoc.addTag({ tagName: text });
 		}
 	}
@@ -198,21 +227,21 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
  * so that documentation is preserved when transpiling
  */
 function generateInitializerDocumentation(classPropertyNode: ObjectProperty): void {
-	const jsDoc = getJsDocOrCreate(classPropertyNode);
 	if (!classPropertyNode.getStructure()?.initializer) {
 		classPropertyNode.setInitializer("undefined");
 	}
 	const initializer = classPropertyNode.getStructure()?.initializer;
 	if (initializer !== "undefined") {
+		const jsDoc = getJsDocOrCreate(classPropertyNode);
 		jsDoc.addTag({ tagName: "default", text: initializer });
 	}
 }
 
 /** Document the class itself; at the moment just its extends signature */
 function generateClassBaseDocumentation(classNode: ClassDeclaration) {
-	const jsDoc = getJsDocOrCreate(classNode);
 	const extendedClass = classNode.getExtends();
 	if (extendedClass) {
+		const jsDoc = getJsDocOrCreate(classNode);
 		jsDoc.addTag({ tagName: "extends", text: extendedClass.getText() });
 	}
 }
@@ -231,27 +260,33 @@ function generateClassDocumentation(classNode: ClassDeclaration): void {
 }
 
 /**
- * Generate @typedefs from type aliases
+ * Generate `@typedefs` from type aliases
  * @return A JSDoc comment containing the typedef
  */
 function generateTypedefDocumentation(typeAlias: TypeAliasDeclaration): string {
 	const name = typeAlias.getName();
-	const jsDoc = getJsDocOrCreate(typeAlias);
-
 	const typeNode = typeAlias.getTypeNode();
+
+	const isObjectType = Node.isTypeLiteral(typeNode) && typeAlias.getType().isObject();
+	const properties = isObjectType ? typeNode.getProperties() : [];
+	const typeParams = typeAlias.getTypeParameters();
+
+	// If we're going to have multiple tags, we need to create a multiline JSDoc
+	const jsDoc = properties.length || typeParams.length
+		? getJsDocOrCreateMultiline(typeAlias)
+		: getJsDocOrCreate(typeAlias);
+
 	if (Node.isTypeLiteral(typeNode) && typeAlias.getType().isObject()) {
 		jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
 		typeNode.getProperties().forEach((prop) => {
 			generateObjectPropertyDocumentation(prop, jsDoc);
 		});
 	} else {
-		let { type } = typeAlias.getStructure();
+		const { type } = typeAlias.getStructure();
 		if (typeof type !== "string") return jsDoc.getFullText();
-		type = sanitizeType(type);
 		jsDoc.addTag({ tagName: "typedef", text: `{${type}} ${name}` });
 	}
 
-	const typeParams = typeAlias.getTypeParameters();
 	typeParams.forEach((param) => {
 		const constraint = param.getConstraint();
 		const defaultType = param.getDefault();
@@ -284,9 +319,7 @@ function generateObjectPropertyDocumentation(
 	if (!topLevelCall) name = `${name}.${node.getName()}`;
 	let propType = node.getTypeNode()
 		?.getText()
-		?.replace(/\n/g, "")
-		?.replace(/\s/g, "");
-	propType = sanitizeType(propType);
+		?.replace(/\n/g, "")?.trim();
 
 	const isOptional = node.hasQuestionToken()
 		|| node.getJsDocs()
@@ -309,10 +342,10 @@ function generateObjectPropertyDocumentation(
 	}
 }
 
-/** Generate @typedefs from interfaces */
+/** Generate `@typedefs` from interfaces */
 function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): string {
 	const name = interfaceNode.getName();
-	const jsDoc = getJsDocOrCreate(interfaceNode);
+	const jsDoc = getJsDocOrCreateMultiline(interfaceNode);
 
 	jsDoc.addTag({ tagName: "typedef", text: `{Object} ${name}` });
 	interfaceNode.getProperties().forEach((prop) => {
@@ -323,7 +356,7 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 
 /** Generate documentation for top-level var, const, and let declarations */
 function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
-	const paramType = sanitizeType((varNode.getTypeNode() || varNode.getType())?.getText());
+	const paramType = (varNode.getTypeNode() || varNode.getType())?.getText();
 	if (!paramType) {
 		return;
 	}
@@ -394,13 +427,20 @@ function transpile(
 
 		sourceFile.getClasses().forEach(generateClassDocumentation);
 
+		const importDeclarations = sourceFile.getImportDeclarations()
+			.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
+			.join("\n")
+			.trim();
+
 		const typedefs = sourceFile.getTypeAliases()
 			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const interfaces = sourceFile.getInterfaces()
 			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
-			.join("\n");
+			.join("\n")
+			.trim();
 
 		const directFunctions = sourceFile.getFunctions();
 		directFunctions.forEach((node) => generateFunctionDocumentation(node));
@@ -441,6 +481,7 @@ function transpile(
 					: _line;
 			}).join("\n").trim();
 
+			if (importDeclarations) result = `${importDeclarations}\n\n${result}`;
 			if (typedefs) result += `\n\n${typedefs}`;
 			if (interfaces) result += `\n\n${interfaces}`;
 
