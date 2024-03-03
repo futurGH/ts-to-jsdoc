@@ -419,9 +419,15 @@ function transpile(
 			line.match(/^[\s\t]*$/) ? (blankLineMarker + line) : line
 		)).join("\n");
 
+		const fileExtension = path.extname(filename);
+		const fileBasename = path.basename(filename, fileExtension);
+		const sourceFilename = fileExtension === ".tsx"
+			? `${fileBasename}.ts-to-jsdoc.tsx`
+			: `${fileBasename}.ts-to-jsdoc.ts`;
+
 		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
-			`${path.basename(filename, ".ts")}.ts-to-jsdoc.ts`,
+			sourceFilename,
 			code,
 		);
 
@@ -456,11 +462,7 @@ function transpile(
 			}
 		});
 
-		let result = project
-			.emitToMemory()
-			?.getFiles()
-			?.find((file) => file.filePath.slice(0, -3) === sourceFile.getFilePath().slice(0, -3))
-			?.text;
+		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
 
 		if (result) {
 			if (!result.startsWith(protectCommentsHeader)) {

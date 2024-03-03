@@ -57,15 +57,17 @@ args.ignore = args.ignore?.length ? normalizePaths(args.ignore) : [];
 const paths = replaceDirectoriesWithFiles(
 	[...new Set(normalizePaths(args._))], // Creating a Set then spreading removes duplicates
 )
-	.filter((filepath) => path.extname(filepath) === ".ts" && !filepath.endsWith(".d.ts"))
+	.filter((filepath) => (path.extname(filepath) === ".ts" && !filepath.endsWith(".d.ts"))
+		|| path.extname(filepath) === ".tsx")
 	.filter((filepath) => !args.ignore.some(
 		(ignoredPath) => filepath === ignoredPath || pathIsInside(filepath, ignoredPath),
 	));
 
 for (const filepath of paths) {
+	const extension = path.extname(filepath);
 	const outPath = path.join(
 		args.out ?? path.dirname(filepath),
-		`${path.basename(filepath, ".ts")}.js`,
+		`${path.basename(filepath, extension)}.js`,
 	);
 	if (fs.existsSync(outPath) && !args.force) {
 		console.warn(warning(`Cannot write to ${outPath}; file already exists.`));
