@@ -17,6 +17,7 @@ import type {
 	PropertyAssignment,
 	PropertyDeclaration,
 	PropertySignature,
+	ReferenceFindableNode,
 	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
@@ -86,6 +87,14 @@ function getOutputJsDocNodeOrCreate(
 	return functionNode;
 }
 
+function nodeIsOnlyUsedInTypePosition(node: ReferenceFindableNode): boolean {
+	for (const reference of node.findReferencesAsNodes()) {
+		if (Node.isImportSpecifier(reference.getParent())) continue;
+		if (!Node.isTypeReference(reference.getParent())) return false;
+	}
+	return true;
+}
+
 /** Generate `@typedef` declarations for type imports */
 function generateImportDeclarationDocumentation(
 	importDeclaration: ImportDeclaration,
@@ -95,19 +104,22 @@ function generateImportDeclarationDocumentation(
 	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
 	const declarationIsTypeOnly = importDeclaration.isTypeOnly();
 
-	const defaultImport = importDeclaration.getDefaultImport()?.getText();
-	if (defaultImport && declarationIsTypeOnly) {
-		typedefs += `/** @typedef {import('${moduleSpecifier}')} ${defaultImport} */\n`;
+	const defaultImport = importDeclaration.getDefaultImport();
+	const defaultImportName = defaultImport?.getText();
+	if (defaultImport) {
+		if (declarationIsTypeOnly || nodeIsOnlyUsedInTypePosition(defaultImport)) {
+			typedefs += `/** @typedef {import('${moduleSpecifier}')} ${defaultImportName} */\n`;
+		}
 	}
 
 	for (const namedImport of importDeclaration.getNamedImports() ?? []) {
-		if (!declarationIsTypeOnly && !namedImport.isTypeOnly()) continue;
-
 		const name = namedImport.getName();
 		const aliasNode = namedImport.getAliasNode();
 		const alias = aliasNode?.getText() || name;
 
-		typedefs += `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */\n`;
+		if (declarationIsTypeOnly || namedImport.isTypeOnly() || nodeIsOnlyUsedInTypePosition(aliasNode || namedImport.getNameNode())) {
+			typedefs += `/** @typedef {import('${moduleSpecifier}').${name}} ${alias} */\n`;
+		}
 	}
 
 	return typedefs;
