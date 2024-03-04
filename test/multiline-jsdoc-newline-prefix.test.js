@@ -114,12 +114,12 @@ class Test {
      * @private
      * @readonly
      */
-    prop1 = undefined;
+    prop1;
 
     /**
      * @protected
      */
-    prop2 = undefined;
+    prop2;
 
     /**
      * Method

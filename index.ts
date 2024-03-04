@@ -227,13 +227,11 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
  * so that documentation is preserved when transpiling
  */
 function generateInitializerDocumentation(classPropertyNode: ObjectProperty): void {
-	if (!classPropertyNode.getStructure()?.initializer) {
-		classPropertyNode.setInitializer("undefined");
-	}
-	const initializer = classPropertyNode.getStructure()?.initializer;
-	if (initializer !== "undefined") {
+	const initializer = classPropertyNode.getInitializer();
+	const initializerType = initializer?.getType().getText();
+	if (initializer && initializer.getText() !== "undefined") {
 		const jsDoc = getJsDocOrCreate(classPropertyNode);
-		jsDoc.addTag({ tagName: "default", text: initializer });
+		jsDoc.addTag({ tagName: "default", text: initializerType });
 	}
 }
 
