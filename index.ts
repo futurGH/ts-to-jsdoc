@@ -401,14 +401,6 @@ function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
  * @param sourceFile The source file to generate documentation for
  */
 function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
-	// Preserve blank lines in output
-	const blankLineMarker = "// TS-TO-JSDOC BLANK LINE //";
-	const blankLines = [...sourceFile.getFullText().matchAll(/^[\s\t]*$/gm)];
-	sourceFile.applyTextChanges(blankLines.map((match) => ({
-		span: { start: match.index, length: match[0].length },
-		newText: blankLineMarker,
-	})));
-
 	sourceFile.getClasses().forEach(generateClassDocumentation);
 
 	const importDeclarations = sourceFile.getImportDeclarations()
@@ -439,13 +431,6 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 			generateTopLevelVariableDocumentation(varDeclaration);
 		}
 	});
-
-	// Restore blank lines in output
-	const blankLineMarkers = [...sourceFile.getFullText().matchAll(new RegExp(blankLineMarker, "g"))];
-	sourceFile.applyTextChanges(blankLineMarkers.map((match) => ({
-		span: { start: match.index, length: blankLineMarker.length },
-		newText: "\n",
-	})));
 
 	sourceFile.insertText(0, `${importDeclarations}\n\n`);
 	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${typedefs}`);
