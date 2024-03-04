@@ -1,4 +1,4 @@
-const transpile = require("../index.js");
+const { transpileFile } = require("../index.js");
 
 /**
  * Compare the transpiled output of the input to the expected output.
@@ -6,7 +6,7 @@ const transpile = require("../index.js");
  * @param {string} expected The expected output.
  */
 function compareTranspile(input, expected) {
-	const actual = transpile(input);
+	const actual = transpileFile(input);
 
 	expect(actual).toBe(expected);
 }

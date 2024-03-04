@@ -5,6 +5,7 @@ import {
 } from "ts-morph";
 
 import type {
+	CompilerOptions,
 	ClassDeclaration,
 	FunctionLikeDeclaration,
 	ImportDeclaration,
@@ -16,6 +17,7 @@ import type {
 	PropertyAssignment,
 	PropertyDeclaration,
 	PropertySignature,
+	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
@@ -213,10 +215,11 @@ function generateFunctionDocumentation(
 /** Generate modifier documentation for class member */
 function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
 	const modifiers = classMemberNode.getModifiers() || [];
+	let jsDoc: JSDoc;
 	for (const modifier of modifiers) {
 		const text = modifier?.getText();
 		if (["public", "private", "protected", "readonly", "static"].includes(text)) {
-			const jsDoc = getJsDocOrCreateMultiline(classMemberNode);
+			jsDoc ??= getJsDocOrCreateMultiline(classMemberNode);
 			jsDoc.addTag({ tagName: text });
 		}
 	}
@@ -247,8 +250,8 @@ function generateClassBaseDocumentation(classNode: ClassDeclaration) {
 /** Generate documentation for class members in general; either property or method */
 function generateClassMemberDocumentation(classMemberNode: ClassMemberNode): void {
 	generateModifierDocumentation(classMemberNode);
-	Node.isObjectProperty(classMemberNode) && generateInitializerDocumentation(classMemberNode);
-	Node.isMethodDeclaration(classMemberNode) && generateFunctionDocumentation(classMemberNode);
+	if (Node.isObjectProperty(classMemberNode)) generateInitializerDocumentation(classMemberNode);
+	if (Node.isMethodDeclaration(classMemberNode)) generateFunctionDocumentation(classMemberNode);
 }
 
 /** Generate documentation for a class — itself and its members */
@@ -382,40 +385,129 @@ function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
 }
 
 /**
- * Transpile.
- * @param src Source code to transpile
+ * Generate documentation for a source file
+ * @param sourceFile The source file to generate documentation for
+ */
+function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
+	// Preserve blank lines in output
+	const blankLineMarker = "// TS-TO-JSDOC BLANK LINE //";
+	const blankLines = [...sourceFile.getFullText().matchAll(/^[\s\t]*$/gm)];
+	sourceFile.applyTextChanges(blankLines.map((match) => ({
+		span: { start: match.index, length: match[0].length },
+		newText: blankLineMarker,
+	})));
+
+	sourceFile.getClasses().forEach(generateClassDocumentation);
+
+	const importDeclarations = sourceFile.getImportDeclarations()
+		.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
+		.join("\n")
+		.trim();
+
+	const typedefs = sourceFile.getTypeAliases()
+		.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
+		.join("\n")
+		.trim();
+
+	const interfaces = sourceFile.getInterfaces()
+		.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
+		.join("\n")
+		.trim();
+
+	const directFunctions = sourceFile.getFunctions();
+	directFunctions.forEach((node) => generateFunctionDocumentation(node));
+
+	const varDeclarations = sourceFile.getVariableDeclarations();
+	varDeclarations.forEach((varDeclaration) => {
+		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
+			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
+		if (initializer) {
+			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+		} else {
+			generateTopLevelVariableDocumentation(varDeclaration);
+		}
+	});
+
+	// Restore blank lines in output
+	const blankLineMarkers = [...sourceFile.getFullText().matchAll(new RegExp(blankLineMarker, "g"))];
+	sourceFile.applyTextChanges(blankLineMarkers.map((match) => ({
+		span: { start: match.index, length: blankLineMarker.length },
+		newText: "\n",
+	})));
+
+	sourceFile.insertText(0, `${importDeclarations}\n\n`);
+	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${typedefs}`);
+	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${interfaces}`);
+
+	sourceFile.formatText({
+		ensureNewLineAtEndOfFile: true,
+		trimTrailingWhitespace: true,
+	});
+}
+
+/**
+ * Transpile a project.
+ * @param tsconfig Path to a tsconfig file to use for configuration
+ * @param [debug=false] Whether to log errors
+ */
+export function transpileProject(tsconfig: string, debug = false): void {
+	try {
+		const project = new Project({
+			tsConfigFilePath: tsconfig,
+		});
+
+		const sourceFiles = project.getSourceFiles();
+		sourceFiles.forEach((sourceFile) => generateDocumentationForSourceFile(sourceFile));
+
+		const preEmitDiagnostics = project.getPreEmitDiagnostics();
+		if (preEmitDiagnostics.length && project.getCompilerOptions().noEmitOnError) {
+			throw new Error(`Pre-compilation errors:\n${
+				preEmitDiagnostics.map((diagnostic) => diagnostic.getMessageText()).join("\n")
+			}`);
+		}
+
+		const emitResult = project.emitSync();
+		if (emitResult?.getEmitSkipped()) {
+			throw new Error("Emit was skipped.");
+		}
+		const diagnostics = emitResult.getDiagnostics();
+		if (diagnostics.length) {
+			throw new Error(`Compilation errors:\n${
+				diagnostics.map((diagnostic) => diagnostic.getMessageText()).join("\n")
+			}`);
+		}
+	} catch (e) {
+		if (debug) console.error(e);
+	}
+}
+
+/**
+ * Transpile a single file.
+ * @param code Source code to transpile
  * @param [filename=input.ts] Filename to use internally when transpiling (can be a path or a name)
  * @param [compilerOptions={}] Options for the compiler.
  * 		See https://www.typescriptlang.org/tsconfig#compilerOptions
  * @param [debug=false] Whether to log errors
- * @return Transpiled code (or the original source code if something went wrong)
+ * @returns Transpiled code (or the original source code if something went wrong)
  */
-function transpile(
-	src: string,
-	filename = "input.ts",
-	compilerOptions: object = {},
-	debug = false,
+export function transpileFile(
+	{
+		code, filename = "input.ts", compilerOptions = {}, debug = false,
+	}: {
+		code: string;
+		filename?: string;
+		compilerOptions?: CompilerOptions;
+		debug?: boolean;
+	},
 ): string {
-	// Useless variable to prevent comments from getting removed when code contains just
-	// typedefs/interfaces, which get transpiled to nothing but comments
-	const protectCommentsHeader = "const __tsToJsdoc_protectCommentsHeader = 1;\n";
-	src = protectCommentsHeader + src;
-
 	try {
 		const project = new Project({
-			compilerOptions: {
+			defaultCompilerOptions: {
 				target: ScriptTarget.ESNext,
 				esModuleInterop: true,
-				...compilerOptions,
 			},
+			compilerOptions,
 		});
-
-		// Preserve blank lines in output
-		const blankLineMarker = "// TS-TO-JSDOC BLANK LINE //";
-
-		const code = src.split("\n").map((line) => (
-			line.match(/^[\s\t]*$/) ? (blankLineMarker + line) : line
-		)).join("\n");
 
 		const fileExtension = path.extname(filename);
 		const fileBasename = path.basename(filename, fileExtension);
@@ -429,73 +521,32 @@ function transpile(
 			code,
 		);
 
-		sourceFile.getClasses().forEach(generateClassDocumentation);
+		generateDocumentationForSourceFile(sourceFile);
 
-		const importDeclarations = sourceFile.getImportDeclarations()
-			.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
-			.join("\n")
-			.trim();
-
-		const typedefs = sourceFile.getTypeAliases()
-			.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
-			.join("\n")
-			.trim();
-
-		const interfaces = sourceFile.getInterfaces()
-			.map((interfaceNode) => generateInterfaceDocumentation(interfaceNode).trim())
-			.join("\n")
-			.trim();
-
-		const directFunctions = sourceFile.getFunctions();
-		directFunctions.forEach((node) => generateFunctionDocumentation(node));
-
-		const varDeclarations = sourceFile.getVariableDeclarations();
-		varDeclarations.forEach((varDeclaration) => {
-			const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
-			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
-			if (initializer) {
-				generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
-			} else {
-				generateTopLevelVariableDocumentation(varDeclaration);
-			}
-		});
-
-		let result = project.emitToMemory()?.getFiles()?.[0]?.text;
-
-		if (result) {
-			if (!result.startsWith(protectCommentsHeader)) {
-				throw new Error(
-					"Internal error: generated header is missing in output.\n\n"
-					+ `Output: ${
-						JSON.stringify(`${result.slice(protectCommentsHeader.length + 100)} ...`)
-					}`,
-				);
-			}
-			result = result.replace(protectCommentsHeader, "");
-
-			// Restore blank lines in output
-			result = result.split("\n").map((_line) => {
-				const line = _line.trim();
-				return line.startsWith(blankLineMarker)
-					? line.slice(blankLineMarker.length)
-					: _line;
-			}).join("\n").trim();
-
-			if (importDeclarations) result = `${importDeclarations}\n\n${result}`;
-			if (typedefs) result += `\n\n${typedefs}`;
-			if (interfaces) result += `\n\n${interfaces}`;
-
-			result = `${result.trim()}\n`;
-
-			return result;
+		const preEmitDiagnostics = project.getPreEmitDiagnostics();
+		if (preEmitDiagnostics.length && project.getCompilerOptions().noEmitOnError) {
+			throw new Error(`Pre-compilation errors:\n${
+				preEmitDiagnostics.map((diagnostic) => diagnostic.getMessageText()).join("\n")
+			}`);
 		}
+
+		const emitResult = project.emitToMemory();
+		if (emitResult?.getEmitSkipped()) {
+			throw new Error("Emit was skipped.");
+		}
+		const diagnostics = emitResult.getDiagnostics();
+		if (diagnostics.length) {
+			throw new Error(`Compilation errors:\n${
+				diagnostics.map((diagnostic) => diagnostic.getMessageText()).join("\n")
+			}`);
+		}
+
+		const text = emitResult?.getFiles()?.[0]?.text;
+
+		if (text) return text;
 		throw new Error("Could not emit output to memory.");
 	} catch (e) {
-		debug && console.error(e);
-		return src;
+		if (debug) console.error(e);
+		return code;
 	}
-	return src;
 }
-
-module.exports = transpile;
-export default transpile;

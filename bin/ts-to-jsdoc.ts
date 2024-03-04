@@ -1,14 +1,22 @@
 import arguments from "arg";
 import fs from "fs";
 import path from "path";
-import transpile from "../index";
+import { transpileFile, transpileProject } from "../index";
 
 const {
-	"--out": out, "--ignore": ignore, "--force": force, "--help": help, _,
+	"--out": out,
+	"--project": project,
+	"--ignore": ignore,
+	"--force": force,
+	"--help": help,
+	_,
 } = arguments({
 	"--out": String,
 	"-o": "--out",
 	"--output": "--out",
+
+	"--project": String,
+	"-p": "--project",
 
 	"--ignore": [String],
 	"-i": "--ignore",
@@ -21,18 +29,20 @@ const {
 });
 
 const args = {
-	out, ignore, force, help, _,
+	out, project, ignore, force, help, _,
 };
 
 const helpMessage = `
 Usage:
   ts-to-jsdoc [options] <path>...
+  ts-to-jsdoc -p path/to/tsconfig.json
 
 Options:
   -h --help          Shows this.
-  -o --out --output  Directory to output transpiled JavaScript. [default: source path]
-  -i --ignore        File or directory paths to ignore when transpiling.
-  -f --force         Overwrite existing output files.
+  -p --project       Path to tsconfig.json.
+  -o --out --output  Directory to output transpiled JavaScript. [default: source path, ignored if project is set]
+  -i --ignore        File or directory paths to ignore when transpiling. [ignored if project is set]
+  -f --force         Overwrite existing output files. [ignored if project is set]
 `;
 
 if (args.help || Object.keys(args).every((arg) => !args[arg]?.length)) {
@@ -49,6 +59,22 @@ if (args.out) {
 		}
 	} else {
 		fs.mkdirSync(args.out);
+	}
+}
+
+if (args.project) {
+	args.project = makePathAbsolute(args.project);
+	if (!fs.existsSync(args.project)) {
+		console.error(error(`tsconfig.json does not exist: ${args.project}`));
+		process.exit(1);
+	}
+
+	try {
+		transpileProject(args.project, true);
+		process.exit();
+	} catch (e) {
+		console.error(error(e.message));
+		process.exit(1);
 	}
 }
 
@@ -75,7 +101,9 @@ for (const filepath of paths) {
 	}
 
 	const code = fs.readFileSync(filepath, "utf8");
-	const transpiled = transpile(code, filepath, {}, true);
+	const transpiled = transpileFile({
+		code, filename: filepath, debug: true,
+	});
 
 	fs.writeFileSync(outPath, transpiled);
 }
