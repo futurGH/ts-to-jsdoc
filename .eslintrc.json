@@ -29,5 +29,8 @@
 		"no-use-before-define": "off",
 		"object-curly-spacing": ["error", "always"],
 		"quotes": ["error", "double"]
-	}
+	},
+	"ignorePatterns": [
+		"test/test-project/**/*"
+	]
 }
