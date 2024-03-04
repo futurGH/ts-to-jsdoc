@@ -17,13 +17,11 @@ var baz: boolean = true;
  * @type {string}
  */
 let foo = "foo";
-
 /**
  * Bar
  * @type {number}
  */
 const bar = 1;
-
 /**
  * Baz
  * @type {boolean}

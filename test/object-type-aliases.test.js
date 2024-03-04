@@ -9,7 +9,7 @@ type Test = {
 `;
 		const expected = `/**
  * @typedef {Object} Test
- * @property {string} prop 
+ * @property {string} prop
  */
 `;
 		compareTranspile(input, expected);

@@ -38,7 +38,6 @@ function doStuff1(p1, p2, p3 = 'defaultValue') {
     return 1;
 }
 ;
-
 /**
  * Does stuff. 2
  * @param {string} q1
@@ -63,7 +62,6 @@ const doStuff3 = (f1 = myFunc, f2 = (p) => 0, f3 = (p) => {
     myFunc(1);
     return 0;
 }) => 3;
-
 /** @typedef {(p: any) => number} MyFunc */
 `;
 		compareTranspile(input, expected);

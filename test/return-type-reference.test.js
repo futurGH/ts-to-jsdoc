@@ -18,10 +18,9 @@ export function someFunction(someString: string): SomeType {
 export function someFunction(someString) {
     return { someKey: someString };
 }
-
 /**
  * @typedef {Object} SomeType
- * @property {string} someKey 
+ * @property {string} someKey
  */
 `;
 		compareTranspile(input, expected);

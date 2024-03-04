@@ -71,7 +71,7 @@ type ObjectType = {
 /**
  * @typedef {Object} ObjectType
  * @property {string} foo
- * @property {number} bar 
+ * @property {number} bar
  */
 `;
 		compareTranspile(input, expected);
@@ -85,7 +85,7 @@ interface SomeType {
 `;
 		const expected = `/**
  * @typedef {Object} SomeType
- * @property {string} someKey 
+ * @property {string} someKey
  */
 `;
 		compareTranspile(input, expected);
@@ -107,27 +107,23 @@ class Test {
 	}
 }
 `;
-		const expected = `
-class Test {
+		const expected = `class Test {
     /**
      * Property
      * @private
      * @readonly
      */
     prop1;
-
     /**
      * @protected
      */
     prop2;
-
     /**
      * Method
      * @static
      * @returns {Promise<void>}
      */
     static async method1() { }
-
     /**
      * @private
      * @returns {string}
