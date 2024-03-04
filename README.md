@@ -10,37 +10,42 @@ $ ts-to-jsdoc
 
 Usage:
   ts-to-jsdoc [options] <path>...
+  ts-to-jsdoc -p path/to/tsconfig.json
 
 Options:
   -h --help          Shows this.
-  -o --out --output  Directory to output transpiled JavaScript. [default: source path]
-  -i --ignore        File or directory paths to ignore when transpiling.
-  -f --force         Overwrite existing output files.
+  -p --project       Path to tsconfig.json.
+  -o --out --output  Directory to output transpiled JavaScript. [default: source path, ignored if project is set]
+  -i --ignore        File or directory paths to ignore when transpiling. [ignored if project is set]
+  -f --force         Overwrite existing output files. [ignored if project is set]
 ```
 
 ### Node.js
 
 ```javascript
-const transpile = require("ts-to-jsdoc");
+const { transpileFile, transpileProject } = require("ts-to-jsdoc");
 // or
-import transpile from "ts-to-jsdoc";
+import { transpileFile, transpileProject } from "ts-to-jsdoc";
 
 const code = `
 /**
  * Does stuff.
  * @param param It's a parameter.
  */
-function doStuff(param: string): number {}
+function doStuff(param: string): number { }
 `;
 
-const transpiledCode = transpile(code);
+const transpiledCode = transpileFile({ code: code });
 // Output:
 // /**
 //  * Does stuff.
 //  * @param {string} param It's a parameter.
 //  * @returns {number}
 //  */
-// function doStuff(param) {}
+// function doStuff(param) { }
+
+/* Or you can transpile an entire project at once */
+transpileProject({ project: "path/to/tsconfig.json" });
 ```
 
 ## License
