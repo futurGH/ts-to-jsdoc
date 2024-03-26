@@ -7,7 +7,9 @@ import {
 import type {
 	CompilerOptions,
 	ClassDeclaration,
+	ConstructorDeclaration,
 	FunctionLikeDeclaration,
+	GetAccessorDeclaration,
 	ImportDeclaration,
 	InterfaceDeclaration,
 	JSDoc,
@@ -18,6 +20,7 @@ import type {
 	PropertyDeclaration,
 	PropertySignature,
 	ReferenceFindableNode,
+	SetAccessorDeclaration,
 	SourceFile,
 	TypeAliasDeclaration,
 	TypedNode,
@@ -250,6 +253,25 @@ function generateInitializerDocumentation(classPropertyNode: ObjectProperty): vo
 	}
 }
 
+/** Generate documentation for a get accessor */
+function generateGetterDocumentation(getterNode: GetAccessorDeclaration): void {
+	const jsDoc = getJsDocOrCreateMultiline(getterNode);
+	jsDoc.addTag({ tagName: "returns", text: `{${getterNode.getReturnType().getText()}}` });
+}
+
+/** Generate documentation for a set accessor */
+function generateSetterDocumentation(setterNode: SetAccessorDeclaration): void {
+	const jsDoc = getJsDocOrCreateMultiline(setterNode);
+	const parameter = setterNode.getParameters()[0];
+	jsDoc.addTag({ tagName: "param", text: `{${parameter.getType().getText()}} ${parameter.getName()}` });
+}
+
+/** Generate documentation for a class constructor */
+function generateConstructorDocumentation(constructor: ConstructorDeclaration): void {
+	const jsDocableNode = getOutputJsDocNodeOrCreate(constructor);
+	generateParameterDocumentation(constructor, jsDocableNode);
+}
+
 /** Document the class itself; at the moment just its extends signature */
 function generateClassBaseDocumentation(classNode: ClassDeclaration) {
 	const extendedClass = classNode.getExtends();
@@ -263,6 +285,9 @@ function generateClassBaseDocumentation(classNode: ClassDeclaration) {
 function generateClassMemberDocumentation(classMemberNode: ClassMemberNode): void {
 	generateModifierDocumentation(classMemberNode);
 	if (Node.isObjectProperty(classMemberNode)) generateInitializerDocumentation(classMemberNode);
+	if (Node.isGetAccessorDeclaration(classMemberNode)) generateGetterDocumentation(classMemberNode);
+	if (Node.isSetAccessorDeclaration(classMemberNode)) generateSetterDocumentation(classMemberNode);
+	if (Node.isConstructorDeclaration(classMemberNode)) generateConstructorDocumentation(classMemberNode);
 	if (Node.isMethodDeclaration(classMemberNode)) generateFunctionDocumentation(classMemberNode);
 }
 
