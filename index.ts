@@ -552,7 +552,7 @@ export function transpileFile(
 			}`);
 		}
 
-		const emitResult = project.emitToMemory();
+		const emitResult = project.emitToMemory({ targetSourceFile: sourceFile });
 		if (emitResult?.getEmitSkipped()) {
 			throw new Error("Emit was skipped.");
 		}
