@@ -90,8 +90,11 @@ function getOutputJsDocNodeOrCreate(
 	return functionNode;
 }
 
-function nodeIsOnlyUsedInTypePosition(node: ReferenceFindableNode): boolean {
+function nodeIsOnlyUsedInTypePosition(node: Node & ReferenceFindableNode): boolean {
 	for (const reference of node.findReferencesAsNodes()) {
+		// We're only looking for usages in the context of the file where the node is defined
+		if (reference.getSourceFile().getFilePath() !== node.getSourceFile().getFilePath()) continue;
+		// A reference in the context of an import statement doesn't count
 		if (Node.isImportSpecifier(reference.getParent())) continue;
 		if (!Node.isTypeReference(reference.getParent())) return false;
 	}
