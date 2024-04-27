@@ -12,6 +12,9 @@ export class Class {
     defaultMember = 1;
     optional;
     definite;
+    /**
+     * @param {string} param
+     */
     constructor(param) {
         this.optional = !!param;
     }
