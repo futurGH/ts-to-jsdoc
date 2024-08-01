@@ -1,7 +1,7 @@
 import path from "path";
 
 import {
-	Node, Project, ScriptTarget, SyntaxKind,
+	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
 } from "ts-morph";
 
 import type {
@@ -156,7 +156,10 @@ function generateParameterDocumentation(
 	paramTags.forEach((tag) => tag.remove());
 
 	for (const param of params) {
-		const paramType = param.getTypeNode()?.getText() || param.getType().getText();
+		const paramType = param.getTypeNode()?.getText() || param.getType().getText(
+			param,
+			TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+		);
 		if (!paramType) continue;
 
 		const paramName = param.compilerNode.name?.getText();
@@ -199,8 +202,10 @@ function generateReturnTypeDocumentation(
 	functionNode: FunctionLikeDeclaration,
 	docNode: JSDocableNode,
 ): void {
-	const returnTypeNode = functionNode.getReturnTypeNode() ?? functionNode.getReturnType();
-	const functionReturnType = returnTypeNode.getText(functionNode.getSignature().getDeclaration());
+	const functionReturnType = functionNode.getReturnTypeNode()?.getText() || functionNode.getReturnType().getText(
+		functionNode.getFunctions()[0],
+		TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+	);
 	const jsDoc = getJsDocOrCreate(docNode);
 	const returnsTag = (jsDoc?.getTags() || [])
 		.find((tag) => ["returns", "return"].includes(tag.getTagName()));
@@ -249,7 +254,10 @@ function generateModifierDocumentation(classMemberNode: ClassMemberNode): void {
  */
 function generateInitializerDocumentation(classPropertyNode: ObjectProperty): void {
 	const initializer = classPropertyNode.getInitializer();
-	const initializerType = initializer?.getType().getText();
+	const initializerType = initializer?.getType().getText(
+		classPropertyNode,
+		TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+	);
 	if (initializer && initializer.getText() !== "undefined") {
 		const jsDoc = getJsDocOrCreate(classPropertyNode);
 		jsDoc.addTag({ tagName: "default", text: initializerType });
@@ -259,14 +267,26 @@ function generateInitializerDocumentation(classPropertyNode: ObjectProperty): vo
 /** Generate documentation for a get accessor */
 function generateGetterDocumentation(getterNode: GetAccessorDeclaration): void {
 	const jsDoc = getJsDocOrCreateMultiline(getterNode);
-	jsDoc.addTag({ tagName: "returns", text: `{${getterNode.getReturnType().getText()}}` });
+	jsDoc.addTag({
+		tagName: "returns",
+		text: `{${getterNode.getReturnType().getText(
+			getterNode,
+			TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+		)}}`,
+	});
 }
 
 /** Generate documentation for a set accessor */
 function generateSetterDocumentation(setterNode: SetAccessorDeclaration): void {
 	const jsDoc = getJsDocOrCreateMultiline(setterNode);
 	const parameter = setterNode.getParameters()[0];
-	jsDoc.addTag({ tagName: "param", text: `{${parameter.getType().getText()}} ${parameter.getName()}` });
+	jsDoc.addTag({
+		tagName: "param",
+		text: `{${parameter.getType().getText(
+			setterNode,
+			TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+		)}} ${parameter.getName()}`,
+	});
 }
 
 /** Generate documentation for a class constructor */
@@ -397,7 +417,10 @@ function generateInterfaceDocumentation(interfaceNode: InterfaceDeclaration): st
 
 /** Generate documentation for top-level var, const, and let declarations */
 function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
-	const paramType = (varNode.getTypeNode() || varNode.getType())?.getText();
+	const paramType = varNode.getTypeNode()?.getText() || varNode.getType().getText(
+		varNode,
+		TypeFormatFlags.UseAliasDefinedOutsideCurrentScope,
+	);
 	if (!paramType) {
 		return;
 	}
