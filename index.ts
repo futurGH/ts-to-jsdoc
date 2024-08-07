@@ -1,5 +1,3 @@
-import path from "path";
-
 import {
 	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
 } from "ts-morph";
@@ -554,18 +552,12 @@ export function transpileFile(
 				target: ScriptTarget.ESNext,
 				esModuleInterop: true,
 			},
+			useInMemoryFileSystem: true,
 			compilerOptions,
 		});
 
-		const fileExtension = path.extname(filename);
-		const fileBasename = path.basename(filename, fileExtension);
-		const sourceFilename = fileExtension === ".tsx"
-			? `${fileBasename}.ts-to-jsdoc.tsx`
-			: `${fileBasename}.ts-to-jsdoc.ts`;
-
-		// ts-morph throws a fit if the path already exists
 		const sourceFile = project.createSourceFile(
-			sourceFilename,
+			filename,
 			code,
 		);
 
