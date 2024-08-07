@@ -554,6 +554,7 @@ export function transpileFile(
 				target: ScriptTarget.ESNext,
 				esModuleInterop: true,
 			},
+			useInMemoryFileSystem: true,
 			compilerOptions,
 		});
 
