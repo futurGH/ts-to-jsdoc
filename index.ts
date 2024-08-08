@@ -1,5 +1,3 @@
-import path from "path";
-
 import {
 	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
 } from "ts-morph";
@@ -535,16 +533,22 @@ export function transpileProject(tsconfig: string, debug = false): void {
  * @param [filename=input.ts] Filename to use internally when transpiling (can be a path or a name)
  * @param [compilerOptions={}] Options for the compiler.
  * 		See https://www.typescriptlang.org/tsconfig#compilerOptions
+ * @param [inMemory=false] Whether to store the file in memory while transpiling
  * @param [debug=false] Whether to log errors
  * @returns Transpiled code (or the original source code if something went wrong)
  */
 export function transpileFile(
 	{
-		code, filename = "input.ts", compilerOptions = {}, debug = false,
+		code,
+		filename = "input.ts",
+		compilerOptions = {},
+		inMemory = false,
+		debug = false,
 	}: {
 		code: string;
 		filename?: string;
 		compilerOptions?: CompilerOptions;
+		inMemory?: boolean;
 		debug?: boolean;
 	},
 ): string {
@@ -554,20 +558,22 @@ export function transpileFile(
 				target: ScriptTarget.ESNext,
 				esModuleInterop: true,
 			},
+			useInMemoryFileSystem: inMemory,
 			compilerOptions,
 		});
 
-		const fileExtension = path.extname(filename);
-		const fileBasename = path.basename(filename, fileExtension);
-		const sourceFilename = fileExtension === ".tsx"
-			? `${fileBasename}.ts-to-jsdoc.tsx`
-			: `${fileBasename}.ts-to-jsdoc.ts`;
-
-		// ts-morph throws a fit if the path already exists
-		const sourceFile = project.createSourceFile(
-			sourceFilename,
-			code,
-		);
+		let sourceFile: SourceFile;
+		if (inMemory) {
+			sourceFile = project.createSourceFile(filename, code);
+		} else {
+			const fileExtension = filename.split(".").pop();
+			const fileBasename = filename.slice(0, -fileExtension.length - 1);
+			// Avoid conflicts with the original file
+			const sourceFilename = fileExtension === "tsx"
+				? `${fileBasename}.ts-to-jsdoc.tsx`
+				: `${fileBasename}.ts-to-jsdoc.ts`;
+			sourceFile = project.createSourceFile(sourceFilename, code);
+		}
 
 		generateDocumentationForSourceFile(sourceFile);
 
