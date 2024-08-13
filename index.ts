@@ -23,6 +23,7 @@ import type {
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
+	ModuleDeclaration,
 } from "ts-morph";
 
 declare module "ts-morph" {
@@ -457,6 +458,9 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 		.join("\n")
 		.trim();
 
+	const namespaces = sourceFile.getModules()
+		.map((namespace) => generateNamespaceDocumentation(namespace).trim()).join("\n").trim();
+
 	const typedefs = sourceFile.getTypeAliases()
 		.map((typeAlias) => generateTypedefDocumentation(typeAlias).trim())
 		.join("\n")
@@ -482,6 +486,7 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 	});
 
 	sourceFile.insertText(0, `${importDeclarations}\n\n`);
+	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${namespaces}`);
 	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${typedefs}`);
 	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${interfaces}`);
 
@@ -489,6 +494,54 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 		ensureNewLineAtEndOfFile: true,
 		trimTrailingWhitespace: true,
 	});
+}
+
+function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = ""): string {
+	const namespaceName = namespace.getName();
+	const name = [prefix, namespaceName].filter(Boolean).join(".");
+
+	const jsDoc = getJsDocOrCreateMultiline(namespace);
+	jsDoc.addTag({ tagName: "namespace", text: name });
+
+	const namespaces = namespace.getModules()
+		.map(($namespace) => generateNamespaceDocumentation($namespace, name));
+
+	const typedefs = namespace.getTypeAliases()
+		.map((typeAlias) => {
+			const aliasName = typeAlias.getName();
+			const scopedName = `${name}.${aliasName}`;
+			const documentation = generateTypedefDocumentation(typeAlias).trim();
+			return documentation
+				.replace(`@typedef {Object} ${aliasName}`, `@typedef {Object} ${scopedName}`);
+		})
+		.join("\n")
+		.trim();
+
+	const interfaces = namespace.getInterfaces()
+		.map((interfaceNode) => {
+			const interfaceName = interfaceNode.getName();
+			const scopedName = `${name}.${interfaceName}`;
+			const documentation = generateInterfaceDocumentation(interfaceNode).trim();
+
+			return documentation
+				.replace(`@typedef {Object} ${interfaceName}`, `@typedef {Object} ${scopedName}`);
+		})
+		.join("\n")
+		.trim();
+
+	const result = [
+		jsDoc.getFullText(),
+		namespaces,
+		typedefs,
+		interfaces,
+	]
+		.join("\n")
+		// Normalize indentation depths to be consistent
+		.replace(/^[ \t]{1,}\*/gm, " *");
+
+	namespace.remove();
+
+	return result;
 }
 
 /**
