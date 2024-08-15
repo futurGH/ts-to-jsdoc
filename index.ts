@@ -450,8 +450,6 @@ function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = "
 	let containsValueReferences = false;
 
 	namespace.forEachDescendant((node, traversal) => {
-		if (containsValueReferences) traversal.stop();
-
 		switch (node.getKind()) {
 		case SyntaxKind.ClassDeclaration:
 		case SyntaxKind.FunctionDeclaration:
