@@ -1,7 +1,7 @@
 const compareTranspile = require("./compare.js");
 
-describe("namespace", () => {
-	test("namespaces with value elements are correctly generated", () => {
+describe("type namespace", () => {
+	test("namespaces with only types are correctly generated", () => {
 		const input = `
 /** Namespace description */
 export namespace Example {
@@ -16,18 +16,6 @@ export namespace Example {
     /** Property description */
     label: string;
   }
-
-  /** Variable description */
-  export const SubConstant: number = 5
-
-  /** Variable description */
-  export var SubVariable: number = 5
-
-  /** Class description */
-  export class SubClass extends Error {}
-
-  /** Function description */
-  export function SubFunction() {}
 
   /** Sub namespace description */
   export namespace SubNamespace {
@@ -49,32 +37,6 @@ export namespace Example {
  * Namespace description
  * @namespace Example
  */
-export var Example;
-(function (Example) {
-    /**
-       * Variable description
-       * @type {number}
-       */
-    Example.SubConstant = 5;
-    /**
-       * Variable description
-       * @type {number}
-       */
-    Example.SubVariable = 5;
-    /**
-       * Class description
-       * @extends Error
-       */
-    class SubClass extends Error {
-    }
-    Example.SubClass = SubClass;
-    /**
-       * Function description
-       * @returns {void}
-       */
-    function SubFunction() { }
-    Example.SubFunction = SubFunction;
-})(Example || (Example = {}));
 /**
  * Type description
  * @typedef {Object} Example.SubType
