@@ -23,6 +23,7 @@ import type {
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
+	ModuleDeclaration,
 } from "ts-morph";
 
 declare module "ts-morph" {
@@ -445,12 +446,96 @@ function generateTopLevelVariableDocumentation(varNode: VariableDeclaration) {
 	});
 }
 
+function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = ""): string[] {
+	let containsValueReferences = false;
+
+	namespace.forEachDescendant((node, traversal) => {
+		switch (node.getKind()) {
+		case SyntaxKind.ClassDeclaration:
+		case SyntaxKind.FunctionDeclaration:
+		case SyntaxKind.VariableDeclaration:
+			containsValueReferences = true;
+			traversal.stop();
+			break;
+		default:
+			break;
+		}
+	});
+
+	const namespaceName = namespace.getName();
+	const name = [prefix, namespaceName].filter(Boolean).join(".");
+	const jsDoc = getJsDocOrCreateMultiline(namespace);
+	jsDoc.addTag({ tagName: "namespace", text: name });
+
+	const additions = namespace.getModules()
+		.map(($namespace) => generateNamespaceDocumentation($namespace, name));
+
+	const typedefs = namespace.getTypeAliases()
+		.map((typeAlias) => {
+			const aliasName = typeAlias.getName();
+			const scopedName = `${name}.${aliasName}`;
+			const documentation = generateTypedefDocumentation(typeAlias).trim();
+
+			return documentation
+				.replace(`@typedef {Object} ${aliasName}`, `@typedef {Object} ${scopedName}`);
+		})
+		.join("\n")
+		.trim();
+
+	const interfaces = namespace.getInterfaces()
+		.map((interfaceNode) => {
+			const interfaceName = interfaceNode.getName();
+			const scopedName = `${name}.${interfaceName}`;
+			const documentation = generateInterfaceDocumentation(interfaceNode).trim();
+
+			return documentation
+				.replace(`@typedef {Object} ${interfaceName}`, `@typedef {Object} ${scopedName}`);
+		})
+		.join("\n")
+		.trim();
+
+	namespace.getClasses().forEach(generateClassDocumentation);
+
+	namespace.getFunctions().forEach((node) => generateFunctionDocumentation(node));
+
+	const varDeclarations = namespace.getVariableDeclarations();
+	varDeclarations.forEach((varDeclaration) => {
+		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
+			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
+		if (initializer) {
+			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+		} else {
+			generateTopLevelVariableDocumentation(varDeclaration);
+		}
+	});
+
+	const result = [
+		typedefs,
+		interfaces,
+		additions,
+	].flat(2);
+
+	// Namespace only includes types
+	if (!containsValueReferences) {
+		result.unshift(jsDoc.getFullText());
+		namespace.remove();
+	}
+
+	return result
+		// Normalize indentation depths to be consistent
+		.map((text) => text.replace(/^[ \t]{1,}\*/gm, " *"));
+}
+
 /**
  * Generate documentation for a source file
  * @param sourceFile The source file to generate documentation for
  */
 function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 	sourceFile.getClasses().forEach(generateClassDocumentation);
+
+	const namespaceAdditions = sourceFile.getModules()
+		.map((namespace) => generateNamespaceDocumentation(namespace))
+		.flat(2);
 
 	const importDeclarations = sourceFile.getImportDeclarations()
 		.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
@@ -482,6 +567,8 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 	});
 
 	sourceFile.insertText(0, `${importDeclarations}\n\n`);
+	sourceFile
+		.insertText(sourceFile.getFullText().length - 1, `\n\n${namespaceAdditions.join("\n")}`);
 	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${typedefs}`);
 	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${interfaces}`);
 
