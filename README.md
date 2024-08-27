@@ -1,6 +1,8 @@
 # TypeScript to JSDoc
 Transpile TypeScript code annotated with JSDoc to fully compatible JavaScript code, preserving your documentation.
 
+Demo by [@smacpherson64](https://github.com/smacpherson64): [TypeScript to JSDoc](https://sethmac.com/typescript-to-jsdoc/)
+
 ## Usage
 
 ### Command Line
