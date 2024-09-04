@@ -223,11 +223,11 @@ function generateReturnTypeDocumentation(
 }
 
 /**
- * Generate documentation for a function, storing it in functionNode or docNode
+ * Generate documentation for a function, storing it in functionNode or context.docNode
  */
 function generateFunctionDocumentation(
 	functionNode: FunctionLikeDeclaration,
-	context: {docNode?: JSDocableNode, overloads?: FunctionDeclaration[]} = {},
+	context: { docNode?: JSDocableNode, overloads?: FunctionDeclaration[] } = {},
 ): void {
 	const outputDocNode = getOutputJsDocNodeOrCreate(functionNode, context.docNode);
 
@@ -260,9 +260,9 @@ function generateFunctionDocumentation(
 							const tagName = tag.getTagName();
 							const text = tag
 								.getFullText()
-								// Remove tag as it is already prepended.
+								// Remove leading tag name and space.
 								.replace(`@${tag.getTagName()} `, "")
-								// Ignore trailing next jsdoc line start.
+								// Ignore trailing whitespace.
 								.replace(/\s\s\*/, "")
 								.trim();
 

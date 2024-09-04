@@ -1,6 +1,6 @@
 const compareTranspile = require("./compare.js");
 
-describe("Simple function overload", () => {
+describe("overloaded-functions", () => {
 	test("wrap optional parameter names in square brackets", () => {
 		const input = `
 /**
@@ -46,9 +46,7 @@ function add(a, b) {
 `;
 		compareTranspile(input, expected);
 	});
-});
 
-describe("function overload with templates", () => {
 	test("wrap optional parameter names in square brackets", () => {
 		const input = `
 /**
