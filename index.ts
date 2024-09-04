@@ -246,35 +246,22 @@ function generateFunctionDocumentation(
 
 	const overloads = context.overloads || [];
 
-	overloads.forEach((overload) => {
+	const structures = overloads.flatMap((overload) => {
 		generateFunctionDocumentation(overload);
 
 		const jsDocs = overload.getJsDocs();
-		const structures = jsDocs.map(
+		return jsDocs.map(
 			(jsDoc) => ({
 				description: jsDoc.getDescription(),
 				tags: [
 					{ tagName: "overload" },
-					...(jsDoc.getTags().map(
-						(tag) => {
-							const tagName = tag.getTagName();
-							const text = tag
-								.getFullText()
-								// Remove leading tag name and space.
-								.replace(`@${tag.getTagName()} `, "")
-								// Ignore trailing whitespace.
-								.replace(/\s\s\*/, "")
-								.trim();
-
-							return { tagName, text };
-						},
-					)),
+					...jsDoc.getTags().map((tag) => tag.getStructure()),
 				],
 			}),
 		);
-
-		outputDocNode.insertJsDocs(0, structures);
 	});
+
+	outputDocNode.insertJsDocs(0, structures);
 
 	generateParameterDocumentation(functionNode, outputDocNode);
 	generateReturnTypeDocumentation(functionNode, outputDocNode);

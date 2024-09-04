@@ -21,18 +21,18 @@ function add(a: any, b:any): any {
 }
 `;
 		const expected = `/**
- * Adds two numbers together
- * @overload
- * @param {number} a
- * @param {number} b
- * @returns {number}
- */
-/**
  * Adds two strings together
  * @overload
  * @param {string} a
  * @param {string} b
  * @returns {string}
+ */
+/**
+ * Adds two numbers together
+ * @overload
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
  */
 /**
  * Adds two items together
@@ -80,6 +80,14 @@ export function speak(speech: any, entity: any) {
 }
 `;
 		const expected = `/**
+ * Creates a curried function to cause an entity to speak.
+ *
+ * @overload
+ * @see {@link speak}
+ * @param {string} speech The content to speak.
+ * @returns {<T extends {say: (text: string) => void}>(entity: T) => Promise<void>} A curried function.
+ */
+/**
  * Causes an entity to speak.
  *
  * @overload
@@ -88,14 +96,6 @@ export function speak(speech: any, entity: any) {
  * @param {string} speech The content to speak.
  * @param {T} entity The entity to trigger the speech from.
  * @returns {Promise<void>} The resulting promise, which resolves when complete.
- */
-/**
- * Creates a curried function to cause an entity to speak.
- *
- * @overload
- * @see {@link speak}
- * @param {string} speech The content to speak.
- * @returns {<T extends {say: (text: string) => void}>(entity: T) => Promise<void>} A curried function.
  */
 /**
  * Causes an entity to speak.
