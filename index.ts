@@ -23,6 +23,7 @@ import type {
 	TypeAliasDeclaration,
 	TypedNode,
 	VariableDeclaration,
+	FunctionDeclaration,
 	ModuleDeclaration,
 } from "ts-morph";
 
@@ -222,13 +223,45 @@ function generateReturnTypeDocumentation(
 }
 
 /**
- * Generate documentation for a function, storing it in functionNode or docNode
+ * Generate documentation for a function, storing it in functionNode or context.docNode
  */
 function generateFunctionDocumentation(
 	functionNode: FunctionLikeDeclaration,
-	docNode?: JSDocableNode,
+	context: { docNode?: JSDocableNode, overloads?: FunctionDeclaration[] } = {},
 ): void {
-	const outputDocNode = getOutputJsDocNodeOrCreate(functionNode, docNode);
+	const outputDocNode = getOutputJsDocNodeOrCreate(functionNode, context.docNode);
+
+	const typeParams = functionNode.getTypeParameters();
+
+	typeParams.forEach((param) => {
+		const constraint = param.getConstraint();
+		const defaultType = param.getDefault();
+		const paramName = param.getName();
+		const nameWithDefault = defaultType ? `[${paramName}=${defaultType.getText()}]` : paramName;
+		outputDocNode.getJsDocs()[0].addTag({
+			tagName: "template",
+			text: `${constraint ? `{${constraint.getText()}} ` : ""}${nameWithDefault}`,
+		});
+	});
+
+	const overloads = context.overloads || [];
+
+	const structures = overloads.flatMap((overload) => {
+		generateFunctionDocumentation(overload);
+
+		const jsDocs = overload.getJsDocs();
+		return jsDocs.map(
+			(jsDoc) => ({
+				description: jsDoc.getDescription(),
+				tags: [
+					{ tagName: "overload" },
+					...jsDoc.getTags().map((tag) => tag.getStructure()),
+				],
+			}),
+		);
+	});
+
+	outputDocNode.insertJsDocs(0, structures);
 
 	generateParameterDocumentation(functionNode, outputDocNode);
 	generateReturnTypeDocumentation(functionNode, outputDocNode);
@@ -503,7 +536,8 @@ function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = "
 		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
 		if (initializer) {
-			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			const docNode = varDeclaration.getVariableStatement();
+			generateFunctionDocumentation(initializer, { docNode });
 		} else {
 			generateTopLevelVariableDocumentation(varDeclaration);
 		}
@@ -552,15 +586,33 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
 		.join("\n")
 		.trim();
 
+	const functionOverloadsByName = {};
+
+	sourceFile.forEachChild((node) => {
+		if (Node.isFunctionDeclaration(node)) {
+			if (!functionOverloadsByName[node.getName()]) {
+				functionOverloadsByName[node.getName()] = [];
+			}
+
+			if (!node.hasBody()) {
+				functionOverloadsByName[node.getName()].push(node);
+			}
+		}
+	});
+
 	const directFunctions = sourceFile.getFunctions();
-	directFunctions.forEach((node) => generateFunctionDocumentation(node));
+	directFunctions.forEach((node) => {
+		const overloads = functionOverloadsByName[node.getName()] ?? [];
+		generateFunctionDocumentation(node, { overloads });
+	});
 
 	const varDeclarations = sourceFile.getVariableDeclarations();
 	varDeclarations.forEach((varDeclaration) => {
 		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
 		if (initializer) {
-			generateFunctionDocumentation(initializer, varDeclaration.getVariableStatement());
+			const docNode = varDeclaration.getVariableStatement();
+			generateFunctionDocumentation(initializer, { docNode });
 		} else {
 			generateTopLevelVariableDocumentation(varDeclaration);
 		}
