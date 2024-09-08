@@ -1,6 +1,8 @@
 import {
-	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
+	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags
 } from "ts-morph";
+
+import { versionMajorMinor as tsVersionMajorMinor } from "typescript";
 
 import type {
 	CompilerOptions,
@@ -45,6 +47,20 @@ type ObjectProperty = JSDocableNode & TypedNode & (
 	| PropertySignature
 );
 type ClassMemberNode = JSDocableNode & ModifierableNode & ObjectProperty & MethodDeclaration;
+
+interface MajorMinorVersion {
+	major: number;
+	minor: number;
+}
+
+function parseTsVersion(majorMinor: string): MajorMinorVersion {
+	const [major, minor] = majorMinor.split(".").map(v => parseInt(v));
+	return { major, minor };
+}
+
+function isTsVersionAtLeast(tsVersion: MajorMinorVersion, major: number, minor: number): boolean {
+	return tsVersion.major > major || (tsVersion.major === major && tsVersion.minor >= minor);
+}
 
 /** Get children for object node */
 function getChildProperties(node: Node): ObjectProperty[] {
@@ -102,7 +118,7 @@ function nodeIsOnlyUsedInTypePosition(node: Node & ReferenceFindableNode): boole
 }
 
 /** Generate `@typedef` declarations for type imports */
-function generateImportDeclarationDocumentation(
+function generateImportDeclarationDocumentationViaTypedef(
 	importDeclaration: ImportDeclaration,
 ): string {
 	let typedefs = "";
@@ -129,6 +145,49 @@ function generateImportDeclarationDocumentation(
 	}
 
 	return typedefs;
+}
+
+/** Generate `@import` JSDoc declarations for type imports */
+function generateImportDeclarationDocumentationViaImportTag(
+	importDeclaration: ImportDeclaration,
+): string {
+	const moduleSpecifier = importDeclaration.getModuleSpecifierValue();
+	const declarationIsTypeOnly = importDeclaration.isTypeOnly();
+
+	const imports: { default: string | undefined, named: string[] } = {
+		default: undefined,
+		named: [],
+	};
+
+	const defaultImport = importDeclaration.getDefaultImport();
+	const defaultImportName = defaultImport?.getText();
+	if (defaultImport) {
+		if (declarationIsTypeOnly || nodeIsOnlyUsedInTypePosition(defaultImport)) {
+			imports.default = defaultImportName;
+		}
+	}
+
+	for (const namedImport of importDeclaration.getNamedImports() ?? []) {
+		const name = namedImport.getName();
+		const aliasNode = namedImport.getAliasNode();
+		const alias = aliasNode?.getText();
+		if (declarationIsTypeOnly || namedImport.isTypeOnly() || nodeIsOnlyUsedInTypePosition(aliasNode || namedImport.getNameNode())) {
+			if (alias !== undefined) {
+				imports.named.push(`${name} as ${alias}`);
+			} else {
+				imports.named.push(name);
+			}
+		}
+	}
+
+	const importParts: string[] = [];
+	if (imports.default !== undefined) {
+		importParts.push(imports.default);
+	}
+	if (imports.named.length > 0) {
+		importParts.push(`{ ${imports.named.join(", ")} }`);
+	} 
+	return importParts.length > 0 ? `/** @import ${importParts.join(", ")} from '${moduleSpecifier}' */` : "";
 }
 
 /**
@@ -564,12 +623,16 @@ function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = "
  * Generate documentation for a source file
  * @param sourceFile The source file to generate documentation for
  */
-function generateDocumentationForSourceFile(sourceFile: SourceFile): void {
+function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: MajorMinorVersion): void {
 	sourceFile.getClasses().forEach(generateClassDocumentation);
 
 	const namespaceAdditions = sourceFile.getModules()
 		.map((namespace) => generateNamespaceDocumentation(namespace))
 		.flat(2);
+
+	const generateImportDeclarationDocumentation = isTsVersionAtLeast(tsVersion, 5, 5) 
+	  ? generateImportDeclarationDocumentationViaImportTag
+	  : generateImportDeclarationDocumentationViaTypedef;
 
 	const importDeclarations = sourceFile.getImportDeclarations()
 		.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
@@ -641,8 +704,9 @@ export function transpileProject(tsconfig: string, debug = false): void {
 			tsConfigFilePath: tsconfig,
 		});
 
+		const tsVersion = parseTsVersion(tsVersionMajorMinor);
 		const sourceFiles = project.getSourceFiles();
-		sourceFiles.forEach((sourceFile) => generateDocumentationForSourceFile(sourceFile));
+		sourceFiles.forEach((sourceFile) => generateDocumentationForSourceFile(sourceFile, tsVersion));
 
 		const preEmitDiagnostics = project.getPreEmitDiagnostics();
 		if (preEmitDiagnostics.length && project.getCompilerOptions().noEmitOnError) {
@@ -674,6 +738,9 @@ export function transpileProject(tsconfig: string, debug = false): void {
  * 		See https://www.typescriptlang.org/tsconfig#compilerOptions
  * @param [inMemory=false] Whether to store the file in memory while transpiling
  * @param [debug=false] Whether to log errors
+ * @param [tsVersion=<current>] Major and minor version of TypeScript, used to check for
+ * certain features such as whether to `@import` or `@typedef` JSDoc tags for imports.
+ * Defaults to the current TypeScript version.
  * @returns Transpiled code (or the original source code if something went wrong)
  */
 export function transpileFile(
@@ -683,15 +750,19 @@ export function transpileFile(
 		compilerOptions = {},
 		inMemory = false,
 		debug = false,
+		tsVersion = tsVersionMajorMinor,
 	}: {
 		code: string;
 		filename?: string;
 		compilerOptions?: CompilerOptions;
 		inMemory?: boolean;
 		debug?: boolean;
+		tsVersion?: string;
 	},
 ): string {
 	try {
+		const parsedTsVersion = parseTsVersion(tsVersion);
+
 		const project = new Project({
 			defaultCompilerOptions: {
 				target: ScriptTarget.ESNext,
@@ -714,7 +785,7 @@ export function transpileFile(
 			sourceFile = project.createSourceFile(sourceFilename, code);
 		}
 
-		generateDocumentationForSourceFile(sourceFile);
+		generateDocumentationForSourceFile(sourceFile, parsedTsVersion);
 
 		const preEmitDiagnostics = project.getPreEmitDiagnostics();
 		if (preEmitDiagnostics.length && project.getCompilerOptions().noEmitOnError) {
