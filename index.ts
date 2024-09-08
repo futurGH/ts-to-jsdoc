@@ -601,7 +601,7 @@ function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = "
 	varDeclarations.forEach((varDeclaration) => {
 		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
-		if (initializer) {
+		if (initializer && Node.isFunctionLikeDeclaration(initializer)) {
 			const docNode = varDeclaration.getVariableStatement();
 			generateFunctionDocumentation(initializer, { docNode });
 		} else {
@@ -681,7 +681,7 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: M
 	varDeclarations.forEach((varDeclaration) => {
 		const initializer = varDeclaration.getInitializerIfKind(SyntaxKind.ArrowFunction)
 			|| varDeclaration.getInitializerIfKind(SyntaxKind.FunctionExpression);
-		if (initializer) {
+		if (initializer && Node.isFunctionLikeDeclaration(initializer)) {
 			const docNode = varDeclaration.getVariableStatement();
 			generateFunctionDocumentation(initializer, { docNode });
 		} else {
@@ -695,10 +695,7 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: M
 	sourceFile.insertText(sourceFile.getFullText().length, `\n\n${typedefs}`);
 	sourceFile.insertText(sourceFile.getFullText().length, `\n\n${interfaces}`);
 
-	sourceFile.formatText({
-		ensureNewLineAtEndOfFile: true,
-		trimTrailingWhitespace: true,
-	});
+	sourceFile.formatText({ ensureNewLineAtEndOfFile: true });
 }
 
 /**
