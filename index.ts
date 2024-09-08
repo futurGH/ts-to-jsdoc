@@ -1,5 +1,5 @@
 import {
-	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags
+	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
 } from "ts-morph";
 
 import { versionMajorMinor as tsVersionMajorMinor } from "typescript";
@@ -54,7 +54,7 @@ interface MajorMinorVersion {
 }
 
 function parseTsVersion(majorMinor: string): MajorMinorVersion {
-	const [major, minor] = majorMinor.split(".").map(v => parseInt(v));
+	const [major, minor] = majorMinor.split(".").map((v) => parseInt(v));
 	return { major, minor };
 }
 
@@ -186,7 +186,7 @@ function generateImportDeclarationDocumentationViaImportTag(
 	}
 	if (imports.named.length > 0) {
 		importParts.push(`{ ${imports.named.join(", ")} }`);
-	} 
+	}
 	return importParts.length > 0 ? `/** @import ${importParts.join(", ")} from '${moduleSpecifier}' */` : "";
 }
 
@@ -630,7 +630,7 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: M
 		.map((namespace) => generateNamespaceDocumentation(namespace))
 		.flat(2);
 
-	const generateImportDeclarationDocumentation = isTsVersionAtLeast(tsVersion, 5, 5) 
+	const generateImportDeclarationDocumentation = isTsVersionAtLeast(tsVersion, 5, 5)
 	  ? generateImportDeclarationDocumentationViaImportTag
 	  : generateImportDeclarationDocumentationViaTypedef;
 
@@ -683,9 +683,9 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: M
 
 	sourceFile.insertText(0, `${importDeclarations}\n\n`);
 	sourceFile
-		.insertText(sourceFile.getFullText().length - 1, `\n\n${namespaceAdditions.join("\n")}`);
-	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${typedefs}`);
-	sourceFile.insertText(sourceFile.getFullText().length - 1, `\n\n${interfaces}`);
+		.insertText(sourceFile.getFullText().length, `\n\n${namespaceAdditions.join("\n")}`);
+	sourceFile.insertText(sourceFile.getFullText().length, `\n\n${typedefs}`);
+	sourceFile.insertText(sourceFile.getFullText().length, `\n\n${interfaces}`);
 
 	sourceFile.formatText({
 		ensureNewLineAtEndOfFile: true,
