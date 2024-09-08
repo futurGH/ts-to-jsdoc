@@ -1,8 +1,6 @@
 import {
-	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags,
+	Node, Project, ScriptTarget, SyntaxKind, TypeFormatFlags, ts,
 } from "ts-morph";
-
-import { versionMajorMinor as tsVersionMajorMinor } from "typescript";
 
 import type {
 	CompilerOptions,
@@ -52,6 +50,15 @@ interface MajorMinorVersion {
 	major: number;
 	minor: number;
 }
+
+const tsVersionMajorMinor = (() => {
+	try {
+		// eslint-disable-next-line import/no-extraneous-dependencies, global-require
+		return require("typescript").versionMajorMinor;
+		// eslint-disable-next-line no-empty
+	} catch {}
+	return ts.versionMajorMinor;
+})();
 
 function parseTsVersion(majorMinor: string): MajorMinorVersion {
 	const [major, minor] = majorMinor.split(".").map((v) => parseInt(v));
@@ -622,6 +629,7 @@ function generateNamespaceDocumentation(namespace: ModuleDeclaration, prefix = "
 /**
  * Generate documentation for a source file
  * @param sourceFile The source file to generate documentation for
+ * @param tsVersion The TypeScript version to use
  */
 function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: MajorMinorVersion): void {
 	sourceFile.getClasses().forEach(generateClassDocumentation);
@@ -631,8 +639,8 @@ function generateDocumentationForSourceFile(sourceFile: SourceFile, tsVersion: M
 		.flat(2);
 
 	const generateImportDeclarationDocumentation = isTsVersionAtLeast(tsVersion, 5, 5)
-	  ? generateImportDeclarationDocumentationViaImportTag
-	  : generateImportDeclarationDocumentationViaTypedef;
+		? generateImportDeclarationDocumentationViaImportTag
+		: generateImportDeclarationDocumentationViaTypedef;
 
 	const importDeclarations = sourceFile.getImportDeclarations()
 		.map((declaration) => generateImportDeclarationDocumentation(declaration).trim())
